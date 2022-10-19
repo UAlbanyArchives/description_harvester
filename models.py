@@ -10,23 +10,36 @@ class Collection(models.Base):
     #unitdate_bulk_ssim
     #unitdate_inclusive_ssm
     #unitdate_other_ssim
+    date_range_sim = fields.ListField(int)
     extent_ssm = fields.ListField(str)
     language_ssm = fields.ListField(str)
     abstract_ssm = fields.ListField(str)
     collection_ssm = fields.ListField(str)
-    #collection_sim
-    #collection_ssi
+    collection_sim = fields.ListField(str)
+    collection_ssi = fields.ListField(str)
     #collection_title_tesim
     accessrestrict_ssm = fields.ListField(str)
     scopecontent_ssm = fields.ListField(str)
     repository_ssm = fields.ListField(str)
-    #repository_sim
+    repository_sim = fields.ListField(str)
     ead_ssi = fields.ListField(str)
     level_ssm = fields.ListField(str)
+    level_sim = fields.ListField(str)
+    creator_ssm = fields.ListField(str)
+    creator_ssim = fields.ListField(str)
+    creators_ssim = fields.ListField(str)
     has_online_content_ssm = fields.ListField(str)
     normalized_title_ssm = fields.ListField(str)
     normalized_date_ssm = fields.ListField(str)
     names_coll_ssim = fields.ListField(str)
+    names_ssim = fields.ListField(str)
+    access_subjects_ssim = fields.ListField(str)
+    access_subjects_ssm = fields.ListField(str)
+    geogname_ssm = fields.ListField(str)
+    geogname_sim = fields.ListField(str)
+    places_sim = fields.ListField(str)
+    places_ssim = fields.ListField(str)
+    places_ssm = fields.ListField(str)
     accruals_ssm = fields.ListField(str)
     altformavail_ssm = fields.ListField(str)
     appraisal_ssm = fields.ListField(str)
@@ -47,16 +60,19 @@ class Collection(models.Base):
     userestrict_ssm = fields.ListField(str)
     materialspec_ssm = fields.ListField(str)
     physloc_ssm = fields.ListField(str)
+    containers_ssim = fields.ListField(str)
     _childDocuments_ = fields.ListField()
     
 
 class Component(Collection):
     parent_ssim = fields.ListField(str)
+    parent_ssm = fields.ListField(str)
+    parent_ssi = fields.ListField(str)
     parent_unittitles_ssm = fields.ListField(str)
     component_level_isim = fields.ListField(int)
     collection_unitid_ssm = fields.ListField(str)
     child_component_count_isim = fields.ListField(int)
     parent_access_restrict_ssm = fields.ListField(str)
     parent_access_terms_ssm = fields.ListField(str)
-    containers_ssim = fields.ListField(str)
     title_filing_si = fields.StringField()
+    ref_ssm = fields.ListField(str)
