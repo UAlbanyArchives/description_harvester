@@ -9,12 +9,12 @@ solr.ping()
 
 aspace = ArchivesSpace(repository=2)
 #record = aspace.read(101)
-record = aspace.read("ger014")
+record = aspace.read("apap101")
 ## resource URI or EADID? integer or string?s
 
 #print (record.to_struct())
 print(json.dumps(record.to_struct(), indent=4))
-#solr.add([record.to_struct()])
+solr.add([record.to_struct()])
 
 """
 record = Collection()

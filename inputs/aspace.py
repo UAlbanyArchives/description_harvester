@@ -20,9 +20,6 @@ class ArchivesSpace():
         self.repo_name = self.client.get('repositories/' + str(self.repo)).json()['name']
         print (self.repo_name)
 
-    #def singlepart(self, resource, note_type):
-
-    
     def read(self, id):
 
         #collection = self.repo.resources(id)
@@ -40,16 +37,41 @@ class ArchivesSpace():
         if resource["publish"] != True:
             print ("unpublished record")
         else:
+            eadid = resource["ead_id"]
+            record = self.makeDocument(resource, eadid)
 
-            record = Collection()
-            record.id = resource["ead_id"]
-            record.unitid_ssm = [resource["ead_id"]]
+            tree = self.client.get(resource['tree']['ref']).json()
+            #print (tree['title'])
+            count = 0
+            for child in tree['children']:
+                count += 1
+                print ("\t" + child["title"])
+                component = self.client.get(child['record_uri']).json()
+                subrecord = self.makeDocument(component, eadid)
+
+                #if count == 1:
+                #    print (subrecord.to_struct())
+                record._childDocuments_.append(subrecord)
+
+
+            return record
+    
+    def makeDocument(self, resource, eadid):
+            
+            if resource["level"].lower() == "collection":
+                record = Collection()
+                record.id = resource["ead_id"]
+                record.unitid_ssm = [resource["ead_id"]]
+                
+            else:
+                record = Component()
+                record.id = f"{eadid}aspace_{resource['ref_id']}"
+            
             record.title_ssm = [resource["title"]]
-            record.ead_ssi = [resource["ead_id"]]
-
+            record.ead_ssi = [eadid]
             record.repository_ssm = [self.repo_name]
 
-            record.level_ssm = ["collection"]
+            record.level_ssm = [resource["level"]]
 
             dates = []
             normalized_dates = []
@@ -147,4 +169,5 @@ class ArchivesSpace():
              subjects
 
             """
+
             return record

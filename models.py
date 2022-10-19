@@ -2,7 +2,7 @@ from jsonmodels import models, fields, errors, validators
 
 
 class Collection(models.Base):
-    id = fields.StringField()
+    id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)
     title_ssm = fields.ListField(str)
     #title_teim = fields.ListField(str)
@@ -47,6 +47,8 @@ class Collection(models.Base):
     userestrict_ssm = fields.ListField(str)
     materialspec_ssm = fields.ListField(str)
     physloc_ssm = fields.ListField(str)
+    _childDocuments_ = fields.ListField()
+    
 
 class Component(Collection):
     parent_ssim = fields.ListField(str)
