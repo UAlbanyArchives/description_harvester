@@ -43,14 +43,14 @@ class ArchivesSpace():
             inherited_data = {}
             inherited_data["collection"] = []
             recursive_level = 0
-            parents = [eadid]
+            inherited_data["parents"] = []
             inherited_data["parent_unittitles"] = []
             inherited_data["parent_access_restrict"] = []
             inherited_data["parent_access_terms"] = []
 
             tree = self.client.get(resource['tree']['ref']).json()
 
-            record = self.makeSolrDocument(resource, eadid, tree, recursive_level, parents, inherited_data)
+            record = self.makeSolrDocument(resource, eadid, tree, recursive_level, inherited_data)
 
             
             
@@ -73,7 +73,7 @@ class ArchivesSpace():
 
             return record
     
-    def makeSolrDocument(self, resource, eadid, tree, recursive_level, parents, inherited_data):
+    def makeSolrDocument(self, resource, eadid, tree, recursive_level, inherited_data):
         
         indent = recursive_level*"\t"
         print (f"{indent}Indexing {resource['title']}...")
@@ -127,25 +127,28 @@ class ArchivesSpace():
             record.collection_sim = record.normalized_title_ssm
             record.collection_ssi = record.normalized_title_ssm
             inherited_data["collection"] = record.collection_ssm
+            inherited_data["parents"] = [eadid]
+            inherited_data["parent_unittitles"] = record.normalized_title_ssm
         else:
             #record.id = f"{eadid}aspace_{resource['ref_id']}"
             record.id = f"aspace_{resource['ref_id']}"
             record.ref_ssm = [f"aspace_{resource['ref_id']}"]
 
-
-            inherited_data["parent_unittitles"].append(record.normalized_title_ssm[0])
-            print (parents)
-            """
+            #inherited_data["parents"]
+            parents = inherited_data["parents"].copy()
+            parent_titles = inherited_data["parent_unittitles"].copy()
+            print (parent_titles)
+                        
             if len(inherited_data["parents"]) > 0:
-                record.parent_ssim = [inherited_data["parents"][-1]]
-                record.parent_ssm = [inherited_data["parents"][-1]]
-                record.parent_ssi = [inherited_data["parents"][-1]]
-            """
+                #record.parent_ssim = [inherited_data["parents"][-1]]
+                #record.parent_ssm = [inherited_data["parents"][-1]]
+                record.parent_ssi = [parents[-1]]
+            
             record.parent_ssim = parents
             record.parent_ssm = parents
-            record.parent_ssi = parents
+            #record.parent_ssi = parents
 
-            record.parent_unittitles_ssm = inherited_data["parent_unittitles"]
+            record.parent_unittitles_ssm = parent_titles
             record.component_level_isim = [recursive_level]
             record.child_component_count_isim = [inherited_data["child_component_count"]]
             record.collection_ssm = inherited_data["collection"]
@@ -154,6 +157,9 @@ class ArchivesSpace():
             record.parent_access_restrict_ssm = inherited_data["parent_access_restrict"]
             record.parent_access_terms_ssm = inherited_data["parent_access_terms"]
             #"unitid_ssm" order?
+
+            inherited_data["parents"].append(record.id)
+            inherited_data["parent_unittitles"].append(record.normalized_title_ssm[0])
 
         extents = []
         for extent in resource["extents"]:
@@ -254,13 +260,13 @@ class ArchivesSpace():
         has_online_content_ssm = fields.ListField(str)
         """
 
-        parents.append(record.id)
+        
 
         for child in tree['children']:
             component = self.client.get(child['record_uri']).json()            
             inherited_data["child_component_count"] = len(child['children'])
             #if recursive_level < 2:
-            subrecord = self.makeSolrDocument(component, eadid, child, recursive_level, parents, inherited_data)
+            subrecord = self.makeSolrDocument(component, eadid, child, recursive_level, inherited_data)
             record._childDocuments_.append(subrecord)
 
         return record
