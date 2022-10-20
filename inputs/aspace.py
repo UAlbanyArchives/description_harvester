@@ -1,26 +1,45 @@
 import sys
-import json
 #pip install iso-639
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
-from models import Collection, Component
+from models import Component, Date, Extent
+from utils import iso2DACS
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
 
 class ArchivesSpace():
+    """This class connects to an ArchivesSpace repository"""
 
-    def __init__(self, repository):
-        #aspace = ASpace()
+    def __init__(self, repository=2):
+        """
+        Connects to an ASpace repo using ArchivesSnake.
+        Uses URL and login info from ~/.archivessnake.yml
+        
+        Parameters:
+            repository (int): The ASpace Repository ID. Defaults to 2.
+        """
+
         self.client = ASnakeClient()
         self.client.authorize()
 
         self.repo = repository
 
         self.repo_name = self.client.get('repositories/' + str(self.repo)).json()['name']
-        print (self.repo_name)
 
     def read(self, id):
+        """
+        Reads a resource and its associated archival objects
+        Uses URL and login info from ~/.archivessnake.yml
+        
+        Parameters (one of):
+            id (int): a resource's ID from its ASpace URI. Such as 439 for /resources/439
+            id (list): a set of a resource's id_ fields as strings, such as ["id_0", "id_1", "id_2", "id_3"]
+            id (str): a resource's id_0 as a string
+
+        Returns:
+            record (Component): a component object containing all description
+        """
 
         # for URI
         if isinstance(id, int):
@@ -36,207 +55,109 @@ class ArchivesSpace():
         resource = resource_resp.json()
 
         if resource["publish"] != True:
-            print ("unpublished record")
+            print ("Unpublished record")
         else:
 
             eadid = resource["ead_id"]
-            inherited_data = {}
-            inherited_data["collection"] = []
-            recursive_level = 0
-            inherited_data["parents"] = []
-            inherited_data["parent_unittitles"] = []
-            inherited_data["parent_access_restrict"] = []
-            inherited_data["parent_access_terms"] = []
-
             tree = self.client.get(resource['tree']['ref']).json()
 
-            record = self.makeSolrDocument(resource, eadid, tree, recursive_level, inherited_data)
-
-            
-            
-            
-            """
-            for note in resource['notes']:
-                if note['publish'] == True and note['type'] == "accessrestrict":
-                    inherited_data["parent_access_restrict"] = []
-                    for subnote in note['subnotes']:
-                        inherited_data["parent_access_restrict"].append(subnote['content'])
-            for note in resource['notes']:
-                if note['publish'] == True and note['type'] == "userestrict":
-                    inherited_data["parent_access_terms"] = []
-                    for subnote in note['subnotes']:
-                        inherited_data["parent_access_terms"].append(subnote['content'])
-
-            inherited_data["parent_access_restrict_ssm"] = []
-            inherited_data["parent_access_terms_ssm"] = []
-            """
+            record = self.readToModel(resource, eadid, tree)
 
             return record
     
-    def makeSolrDocument(self, resource, eadid, tree, recursive_level, inherited_data):
+
+
+    def readToModel(self, apiObject, eadid, tree, collection_name="", recursive_level=0):
+        """
+        A recursive function that initally takes a resource from the ASpace API and reads it to a model.
+        Then calls itself on any child archival_object records
         
+        Parameters:
+            apiObject (dict): a resource or archival object from the ASpace API as a JSON dict
+            eadid (str): a collection's EADID as a string
+            tree (dict): an ASpace API Tree object for a collection
+            collection_name (str): The name of the collection as a string
+            recursive_level (int): The level of recursion. Start at 0
+
+        Returns:
+            record (Component): a hierarchical component object containing all public-facing description for a collection
+        """
+
+        # Print the name of the object being read, correctly indented        
         indent = recursive_level*"\t"
-        print (f"{indent}Indexing {resource['title']}...")
-
-        recursive_level += 1
+        print (f"{indent}Reading {apiObject['title']}...")
         
-        if resource["level"].lower() == "collection":
-            record = Collection()
-        else:
-            record = Component()
+        record = Component()
         
-        record.title_ssm = [resource["title"]]
-        record.ead_ssi = [eadid]
-        record.repository_ssm = [self.repo_name] #this is wrong locally
-        record.repository_sim = [self.repo_name]
+        record.title = apiObject["title"]
+        record.repository = self.repo_name
+        record.level = apiObject["level"]
 
-        record.level_ssm = [resource["level"]]
-        record.level_sim = [resource["level"]]
-
-        dates = []
-        normalized_dates = []
-        date_range = []
-        for date in resource["dates"]:
-            if "bulk" in date['date_type'].lower():
-                normalized_date = "bulk "
-            else:
-                normalized_date = ""
-            if "expression" in date.keys():
-                dates.append(date['expression'])
-                normalized_date += date['expression']
-            elif "end" in date.keys():
-                dates.append(f"{date['begin']}-{date['end']}")
-                normalized_date = f"{normalized_date}{date['begin']}-{date['end']}"
-            else:
-                dates.append(date['begin'])
-                normalized_date += date['begin']
-            date_range.append(int(date['begin'].split("-")[0]))
+        for date in apiObject["dates"]:
+            dateObj = Date()
+            dateObj.begin = date['begin']
+            if date['date_type'].lower() == "bulk":
+                dateObj.date_type = "bulk"
+            elif date['date_type'].lower() == "inclusive":
+                dateObj.date_type = "inclusive"
             if "end" in date.keys():
-                date_range.append(int(date['end'].split("-")[0]))
-            normalized_dates.append(normalized_date)
-        record.date_range_sim = date_range
-        record.unitdate_ssm = dates
-        record.normalized_date_ssm = [", ".join(normalized_dates)]
+                dateObj.end = date['end']
 
-        record.normalized_title_ssm = [f"{record.title_ssm[0]}, {record.normalized_date_ssm[0]}"]
+            if "expression" in date.keys():
+                dateObj.expression = date['expression']
+            elif "end" in date.keys():
+                dateObj.expression = iso2DACS(date['begin']) + " - " + iso2DACS(date['end'])
+            else:
+                dateObj.expression = iso2DACS(date['begin'])
+            record.dates.append(dateObj)
         
-        if resource["level"].lower() == "collection":
-            record.id = resource["ead_id"]
-            record.unitid_ssm = [resource["ead_id"]]
-            record.collection_ssm = record.normalized_title_ssm
-            record.collection_sim = record.normalized_title_ssm
-            record.collection_ssi = record.normalized_title_ssm
-            inherited_data["collection"] = record.collection_ssm
-            inherited_data["parents"] = [eadid]
-            inherited_data["parent_unittitles"] = record.normalized_title_ssm
+        if apiObject["level"].lower() == "collection":
+            record.id = apiObject["ead_id"]
+            record.collection_id = apiObject["ead_id"]
+            record.collection_name = apiObject["title"]
+            collection_name = record.collection_name
         else:
-            #record.id = f"{eadid}aspace_{resource['ref_id']}"
-            record.id = f"aspace_{resource['ref_id']}"
-            record.ref_ssm = [f"aspace_{resource['ref_id']}"]
+            # Prepending aspace_ to be consistent with the ASpace EAD exporter
+            record.id = "aspace_" + apiObject["ref_id"]
+            record.collection_id = eadid
+            record.collection_name = collection_name
 
-            #inherited_data["parents"]
-            parents = inherited_data["parents"].copy()
-            parent_titles = inherited_data["parent_unittitles"].copy()
-            print (parent_titles)
-                        
-            if len(inherited_data["parents"]) > 0:
-                #record.parent_ssim = [inherited_data["parents"][-1]]
-                #record.parent_ssm = [inherited_data["parents"][-1]]
-                record.parent_ssi = [parents[-1]]
-            
-            record.parent_ssim = parents
-            record.parent_ssm = parents
-            #record.parent_ssi = parents
+        # read extents
+        for extent in apiObject["extents"]:
+            extentObj = Extent()
+            extentObj.number = extent['number']
+            extentObj.unit = extent['extent_type']
+            record.extents.append(extentObj)
 
-            record.parent_unittitles_ssm = parent_titles
-            record.component_level_isim = [recursive_level]
-            record.child_component_count_isim = [inherited_data["child_component_count"]]
-            record.collection_ssm = inherited_data["collection"]
-            record.collection_sim = inherited_data["collection"]
-            record.collection_ssi = inherited_data["collection"]
-            record.parent_access_restrict_ssm = inherited_data["parent_access_restrict"]
-            record.parent_access_terms_ssm = inherited_data["parent_access_terms"]
-            #"unitid_ssm" order?
-
-            inherited_data["parents"].append(record.id)
-            inherited_data["parent_unittitles"].append(record.normalized_title_ssm[0])
-
-        extents = []
-        for extent in resource["extents"]:
-            extents.append(f"{extent['number']} {extent['extent_type']}")
-        record.extent_ssm = extents
-
-        languages_list = []
-        for language in resource["lang_materials"]:
+        # languages
+        for language in apiObject["lang_materials"]:
             lang_code = language['language_and_script']['language']
             lang = languages.get(bibliographic=lang_code.lower())
-            languages_list.append(lang.name)
-        record.language_ssm = [", ".join(languages_list)]
+            record.languages.append(lang.name)
 
-        creators = []
-        names = []
-        for agent_ref in resource['linked_agents']:
+        # Agents and subjects could be a lot more detailed with their own objects
+        # but this is a minimal implementation as I don't have good agent data to work with ¯\_(ツ)_/¯
+        # Agents
+        for agent_ref in apiObject['linked_agents']:
             agent = self.client.get(agent_ref['ref']).json()
             if agent_ref['role'] == "creator":
-                creators.append(agent['title'])
+                record.creators.append(agent['title'])
             else:
-                names.append(agent['title'])
-        record.creator_ssm = creators
-        record.creator_ssim = creators
-        record.creators_ssim = creators
-        record.names_coll_ssim = names
-        record.names_ssim = names
-
-        subjects = []
-        places = []
-        for subject_ref in resource['subjects']:
+                record.names.append(agent['title'])
+        # Subjects
+        for subject_ref in apiObject['subjects']:
             subject = self.client.get(subject_ref['ref']).json()
             # ASpace allows multiple terms per subject, and each can be geo, topical, etc. so I'm just using the first one.
             if subject['terms'][0]['term_type'] == "geographic":
-                places.append(subject['title'])
+                record.places.append(subject['title'])
             else:
-                subjects.append(subject['title'])
-        # Seems imprecise, but this is how what the exiting indexer does.
-        record.access_subjects_ssm = subjects
-        record.access_subjects_ssim = subjects
-        record.geogname_ssm = places
-        record.geogname_sim = places
-        record.places_sim = places
-        record.places_ssm = places
-        record.places_ssim = places
+                record.subjects.append(subject['title'])
 
-        note_translations = {
-            "abstract": "abstract_ssm",
-            "physloc": "physloc_ssm",
-            "processinfo": "processinfo_ssm",
-            "bioghist": "bioghist_ssm",
-            "scopecontent": "scopecontent_ssm",
-            "arrangement": "arrangement_ssm",
-            "acqinfo": "acqinfo_ssim",
-            "accessrestrict": "accessrestrict_ssm",
-            "userestrict": "userestrict_ssm",
-            "prefercite": "prefercite_ssm",
-            "odd": "odd_ssm",
-            "originalsloc": "originalsloc_ssm",
-            "altformavail": "altformavail_ssm",
-            "separatedmaterial": "separatedmaterial_ssm",
-            "relatedmaterial": "relatedmaterial_ssm",
-            "custodhist": "custodhist_ssm",
-            "phystech": "phystech_ssm",
-            "otherfindaid": "otherfindaid_ssm",
-            "accruals": "accruals_ssm",
-            "appraisal": "appraisal_ssm",
-            "fileplan": "fileplan_ssm",
-            "materialspec": "materialspec_ssm",
-            "bibliography": "bibliography_ssm",
-            "dimensions": "dimensions_ssm",
-            "note ": "note_ssm"
-        }
-
-        for note in resource["notes"]:
+        # Notes
+        for note in apiObject["notes"]:
             if note['publish'] == True:
                 if note["jsonmodel_type"] == "note_singlepart":
-                    setattr(record, note_translations[note["type"]], note["content"])
+                    setattr(record, note["type"], note["content"])
                 else:
                     note_text = []
                     for subnote in note["subnotes"]:
@@ -251,22 +172,15 @@ class ArchivesSpace():
                             elif subnote['jsonmodel_type'] == "note_orderedlist":
                                 note_text.append("\n".join(subnote['items']))
                             else:
-                                #print (note)
                                 raise ValueError(subnote)
-                    setattr(record, note_translations[note["type"]], note_text)
+                    setattr(record, note["type"], note_text)
+
             
-
-        """
-        has_online_content_ssm = fields.ListField(str)
-        """
-
-        
+        recursive_level += 1
 
         for child in tree['children']:
             component = self.client.get(child['record_uri']).json()            
-            inherited_data["child_component_count"] = len(child['children'])
-            #if recursive_level < 2:
-            subrecord = self.makeSolrDocument(component, eadid, child, recursive_level, inherited_data)
-            record._childDocuments_.append(subrecord)
+            subrecord = self.readToModel(component, eadid, child, collection_name, recursive_level)
+            record.components.append(subrecord)
 
         return record
