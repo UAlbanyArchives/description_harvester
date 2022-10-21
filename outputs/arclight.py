@@ -1,6 +1,6 @@
 import copy
 import pysolr
-from models import SolrCollection, SolrComponent
+from models.arclight import SolrCollection, SolrComponent
 
 class Arclight():
 
@@ -15,9 +15,20 @@ class Arclight():
 
         self.solr = pysolr.Solr(solr_url, always_commit=True)
         self.solr.ping()
+        
+
+    def convert(self, record):
+
+        has_online_content = set()
+
+        solrDocument, has_online_content = self.convertCollection(record, has_online_content)
+
+        #has_online_content_ssm = 
+
+        return solrDocument
 
 
-    def convert(self, record, recursive_level=0, parents=[], parent_titles=[], inherited_data={}):
+    def convertCollection(self, record, has_online_content, recursive_level=0, parents=[], parent_titles=[], inherited_data={}):
         """
         A recursive function to convert collection and component objects to Arclight-friendly solr docs.
         It takes a component object and converts it and any child objects to an Arclight-friendly
@@ -25,6 +36,7 @@ class Arclight():
 
         Parameters:
             record (Component): a hierarchical component object containing all public-facing description for a collection
+            has_online_content (set):
             recursive_level (int): The level of recursion. Start at 0
             parents (list): A list of parent IDs as strings
             parent_titles (list): A list of parent names as strings
@@ -206,17 +218,21 @@ class Arclight():
                 containers_ssim.append(" ".join(sub_sub_container_string))
         solrDocument.containers_ssim = containers_ssim
 
-        #has_online_content_ssm = 
+        has_dao = False
+        for digital_object in record.digital_objects:
+            has_dao = True
+        has_online_content.add(record.id)
+        has_online_content.update(solrDocument.parents)
 
         # bump recursion level
         recursive_level += 1
 
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
-            component = self.convert(component, recursive_level, new_parents, new_parent_titles, inherited_data)
+            component = self.convert(component, has_online_content, recursive_level, new_parents, new_parent_titles, inherited_data)
             solrDocument._childDocuments_.append(component)
 
-        return solrDocument
+        return solrDocument, has_online_content
 
     def post(self, collection):
 

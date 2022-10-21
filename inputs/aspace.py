@@ -3,7 +3,7 @@ import sys
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
-from models import Component, Date, Extent, Container
+from models.description import Component, Date, Extent, Container, DigitalObject
 from utils import iso2DACS
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
@@ -198,6 +198,13 @@ class ArchivesSpace():
                 if digital_object['publish'] == True:
                     if "file_versions" in digital_object.keys() and len(digital_object['file_versions']) > 0:
                         record.has_digital_object = "true"
+                        for file_version in digital_object['file_versions']:
+                            if file_version['publish'] == True:
+                                if "file_uri" in file_version.keys():
+                                    dao = DigitalObject()
+                                    dao.URI = file_version['file_uri']
+                                    Component.digital_objects.append(dao)
+
 
             
         recursive_level += 1
