@@ -20,6 +20,7 @@ class Container(models.Base):
 
 class DigitalObject(models.Base):
     URI = fields.StringField()
+    label = fields.StringField()
 
 
 class Component(models.Base):

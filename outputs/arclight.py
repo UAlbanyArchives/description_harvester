@@ -1,6 +1,6 @@
 import copy
 import pysolr
-from models.arclight import SolrCollection, SolrComponent
+from models.arclight import SolrCollection, SolrComponent, SolrDigitalObject
 
 class Arclight():
 
@@ -23,9 +23,20 @@ class Arclight():
 
         solrDocument, has_online_content = self.convertCollection(record, has_online_content)
 
-        #has_online_content_ssm = 
+        #if len(has_online_content) > 0:
+        #    solrDocument = self.mark_online_content(solrDocument, has_online_content)
 
         return solrDocument
+
+    def mark_online_content(self, solrComponent, has_online_content):
+
+        if solrComponent.id in has_online_content:
+            solrComponent.has_online_content_ssm = ["true"]
+        for component in solrComponent._childDocuments_:
+            solrComponent = self.mark_online_content(component, has_online_content)
+
+        return solrComponent
+
 
 
     def convertCollection(self, record, has_online_content, recursive_level=0, parents=[], parent_titles=[], inherited_data={}):
@@ -63,7 +74,7 @@ class Arclight():
         normalized_dates = []
         date_range = []
         for date in record.dates:
-            if date.date_type.lower() == "bulk":
+            if hasattr(date, "date_type") and date.date_type == "bulk":
                 normalized_date = "bulk "
             else:
                 normalized_date = ""
@@ -221,16 +232,20 @@ class Arclight():
         has_dao = False
         for digital_object in record.digital_objects:
             has_dao = True
+            dao = SolrDigitalObject()
+            dao.label = digital_object.label
+            dao.href = digital_object.URI
+            solrDocument.digital_objects_ssm.append(dao)
         has_online_content.add(record.id)
-        has_online_content.update(solrDocument.parents)
+        has_online_content.update(parents)
 
         # bump recursion level
         recursive_level += 1
 
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
-            component = self.convert(component, has_online_content, recursive_level, new_parents, new_parent_titles, inherited_data)
-            solrDocument._childDocuments_.append(component)
+            subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, inherited_data)
+            solrDocument._childDocuments_.append(subcomponent)
 
         return solrDocument, has_online_content
 

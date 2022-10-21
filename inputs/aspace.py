@@ -198,13 +198,16 @@ class ArchivesSpace():
                 if digital_object['publish'] == True:
                     if "file_versions" in digital_object.keys() and len(digital_object['file_versions']) > 0:
                         record.has_digital_object = "true"
+                        dao = DigitalObject()
+                        dao_title = digital_object['title']
+                        # So ASpace DAOs can have multiple file versions for some reason so 
+                        # I guess I'm making a new dao for each with the same label?
                         for file_version in digital_object['file_versions']:
                             if file_version['publish'] == True:
                                 if "file_uri" in file_version.keys():
-                                    dao = DigitalObject()
                                     dao.URI = file_version['file_uri']
-                                    Component.digital_objects.append(dao)
-
+                                    dao.label = dao_title
+                                    record.digital_objects.append(dao)
 
             
         recursive_level += 1

@@ -1,5 +1,9 @@
 from jsonmodels import models, fields, errors, validators
 
+class SolrDigitalObject(models.Base):
+    href = fields.StringField()
+    label = fields.StringField()
+
 class SolrCollection(models.Base):
     id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)
@@ -60,6 +64,7 @@ class SolrCollection(models.Base):
     materialspec_ssm = fields.ListField(str)
     physloc_ssm = fields.ListField(str)
     containers_ssim = fields.ListField(str)
+    digital_objects_ssm = fields.ListField(SolrDigitalObject)
     _childDocuments_ = fields.ListField()
     
 
