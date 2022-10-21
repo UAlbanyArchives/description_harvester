@@ -10,6 +10,14 @@ class Extent(models.Base):
     number = fields.StringField(required=True)
     unit = fields.StringField(required=True)
 
+class Container(models.Base):
+    top_container = fields.StringField()
+    top_container_indicator = fields.StringField()
+    sub_container = fields.StringField()
+    sub_container_indicator = fields.StringField()
+    sub_sub_container = fields.StringField()
+    sub_sub_container_indicator = fields.StringField()
+
 class Component(models.Base):
     id = fields.StringField(required=True)
     collection_id = fields.StringField(required=True)
@@ -49,7 +57,8 @@ class Component(models.Base):
     materialspec = fields.ListField(str)
     physloc = fields.ListField(str)
 
-    containers_ssim = fields.ListField(str)
+    containers = fields.ListField(Container)
+    has_digital_object = fields.StringField()
     components = fields.ListField()
         
 

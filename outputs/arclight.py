@@ -179,6 +179,33 @@ class Arclight():
                     inherited_data["parent_access_terms"] = []
                     inherited_data["parent_access_terms"].extend(note_text)
 
+        # Containers
+        # This is a bit nuts, but it was just as much code as a function so I left it explicit
+        containers_ssim = []
+        for container in record.containers:
+            container_string = []
+            if hasattr(container, "top_container") and container.top_container != None:
+                container_string.append(container.top_container)
+            if hasattr(container, "top_container_indicator") and container.top_container_indicator != None:
+                container_string.append(container.top_container_indicator)
+            if len(container_string) > 0:
+                containers_ssim.append(" ".join(container_string))
+            sub_container_string = []
+            if hasattr(container, "sub_container") and container.sub_container != None:
+                sub_container_string.append(container.sub_container)
+            if hasattr(container, "sub_container_indicator") and container.sub_container_indicator != None:
+                sub_container_string.append(container.sub_container_indicator)
+            if len(sub_container_string) > 0:
+                containers_ssim.append(" ".join(sub_container_string))
+            sub_sub_container_string = []
+            if hasattr(container, "sub_sub_container") and container.sub_sub_container != None:
+                sub_sub_container_string.append(container.sub_sub_container)
+            if hasattr(container, "sub_sub_container_indicator") and container.sub_sub_container_indicator != None:
+                sub_sub_container_string.append(container.sub_sub_container_indicator)
+            if len(sub_sub_container_string) > 0:
+                containers_ssim.append(" ".join(sub_sub_container_string))
+        solrDocument.containers_ssim = containers_ssim
+
         #has_online_content_ssm = 
 
         # bump recursion level

@@ -3,7 +3,7 @@ import sys
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
-from models import Component, Date, Extent
+from models import Component, Date, Extent, Container
 from utils import iso2DACS
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
@@ -174,6 +174,30 @@ class ArchivesSpace():
                             else:
                                 raise ValueError(subnote)
                     setattr(record, note["type"], note_text)
+
+        daos = []
+        for instance in apiObject["instances"]:
+            if "sub_container" in instance.keys():
+                container = Container()
+                top_container = self.client.get(instance['sub_container']['top_container']['ref']).json()
+                if 'type' in top_container.keys():
+                    container.top_container = top_container['type']
+                if 'indicator' in top_container.keys():
+                    container.top_container_indicator = top_container['indicator']
+                if 'type_2' in instance['sub_container'].keys():
+                    container.sub_container = instance['sub_container']['type_2']
+                if 'indicator_2' in instance['sub_container'].keys():
+                    container.sub_container_indicator = instance['sub_container']['indicator_2']
+                if 'type_3' in instance['sub_container'].keys():
+                    container.sub_container = instance['sub_container']['type_3']
+                if 'indicator_3' in instance['sub_container'].keys():
+                    container.sub_container_indicator = instance['sub_container']['indicator_3']
+                record.containers.append(container)
+            elif instance['instance_type'] == "digital_object":
+                digital_object = self.client.get(instance['digital_object']['ref']).json()
+                if digital_object['publish'] == True:
+                    if "file_versions" in digital_object.keys() and len(digital_object['file_versions']) > 0:
+                        record.has_digital_object = "true"
 
             
         recursive_level += 1

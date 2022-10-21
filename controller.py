@@ -3,7 +3,7 @@ from outputs.arclight import Arclight
 
 
 aspace = ArchivesSpace()
-record = aspace.read("apap106")
+record = aspace.read("ua950.002")
 
 arclight = Arclight("http://192.168.1.164:8983/solr/test1")
 solrDoc = arclight.convert(record)
