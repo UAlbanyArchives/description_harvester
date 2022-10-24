@@ -22,18 +22,20 @@ class Arclight():
         has_online_content = set()
 
         solrDocument, has_online_content = self.convertCollection(record, has_online_content)
-
-        #if len(has_online_content) > 0:
-        #    solrDocument = self.mark_online_content(solrDocument, has_online_content)
+        
+        if len(has_online_content) > 0:
+            if solrDocument.id in has_online_content:
+                solrDocument.has_online_content_ssim = ["true"]
+            solrDocument = self.mark_online_content(solrDocument, has_online_content)
 
         return solrDocument
 
     def mark_online_content(self, solrComponent, has_online_content):
-
-        if solrComponent.id in has_online_content:
-            solrComponent.has_online_content_ssm = ["true"]
+        
         for component in solrComponent._childDocuments_:
-            solrComponent = self.mark_online_content(component, has_online_content)
+            if component.ref_ssi in has_online_content:
+                component.has_online_content_ssim = ["true"]
+            childComponent = self.mark_online_content(component, has_online_content)
 
         return solrComponent
 
@@ -70,6 +72,7 @@ class Arclight():
 
         solrDocument.ead_ssi = [record.collection_id]
         solrDocument.collection_unitid_ssm = [record.collection_id]
+        solrDocument.collection_unitid_teim = [record.collection_id]
 
         dates = []
         normalized_dates = []
@@ -103,6 +106,7 @@ class Arclight():
         if record.level == "collection":
             solrDocument.id = record.id.replace(".", "-")
             solrDocument.unitid_ssm = [record.collection_id]
+            solrDocument.unitid_teim = [record.collection_id]
             solrDocument.collection_ssm = solrDocument.normalized_title_ssm
             solrDocument.collection_sim = solrDocument.normalized_title_ssm
             solrDocument.collection_ssi = solrDocument.normalized_title_ssm
@@ -136,6 +140,7 @@ class Arclight():
                 solrDocument.parent_ssi = [parents[-1]]
 
             solrDocument.parent_unittitles_ssm = parent_titles
+            solrDocument.parent_unittitles_teim = parent_titles
             solrDocument.parent_levels_ssm = parent_levels
             solrDocument.component_level_isim = [recursive_level]
             solrDocument.child_component_count_isim = [inherited_data["child_component_count"]]
