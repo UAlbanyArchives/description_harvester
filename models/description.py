@@ -10,6 +10,10 @@ class Extent(models.Base):
     number = fields.StringField(required=True)
     unit = fields.StringField(required=True)
 
+class Agent(models.Base):
+    name = fields.StringField(required=True)
+    agent_type = fields.StringField(required=True)
+
 class Container(models.Base):
     top_container = fields.StringField()
     top_container_indicator = fields.StringField()
@@ -34,13 +38,14 @@ class Component(models.Base):
     dates = fields.ListField(Date)
     extents = fields.ListField(Extent)
     languages = fields.ListField(str)
-    creators = fields.ListField(str)
-    names = fields.ListField(str)
+    creators = fields.ListField(Agent)
+    names = fields.ListField(Agent)
     subjects = fields.ListField(str)
     places = fields.ListField(str)
     abstract = fields.ListField(str)
     accessrestrict = fields.ListField(str)
     scopecontent = fields.ListField(str)
+    acqinfo = fields.ListField(str)
     accruals = fields.ListField(str)
     altformavail = fields.ListField(str)
     appraisal = fields.ListField(str)

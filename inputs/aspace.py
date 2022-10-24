@@ -3,7 +3,7 @@ import sys
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
-from models.description import Component, Date, Extent, Container, DigitalObject
+from models.description import Component, Date, Extent, Agent, Container, DigitalObject
 from utils import iso2DACS
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
@@ -140,10 +140,13 @@ class ArchivesSpace():
         # Agents
         for agent_ref in apiObject['linked_agents']:
             agent = self.client.get(agent_ref['ref']).json()
+            agentObj = Agent()
+            agentObj.name  = agent['title']
+            agentObj.agent_type = agent['agent_type'].split("agent_")[1]
             if agent_ref['role'] == "creator":
-                record.creators.append(agent['title'])
+                record.creators.append(agentObj)
             else:
-                record.names.append(agent['title'])
+                record.names.append(agentObj)
         # Subjects
         for subject_ref in apiObject['subjects']:
             subject = self.client.get(subject_ref['ref']).json()
