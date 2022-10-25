@@ -13,7 +13,7 @@ pip install description_indexer
 
 First, you need to configure ArchivesSnake by creating a `~/.archivessnake.yml`file with your API credentials as detailed by the [ArchivesSnake configuration docs](https://github.com/archivesspace-labs/ArchivesSnake#configuration).
 
-Next, you also need a `~.description_indexer.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args.
+Next, you also need a `~/.description_indexer.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args.
 
 ```yml
 solr_url: http://127.0.0.1:8983/solr
