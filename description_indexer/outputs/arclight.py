@@ -33,7 +33,7 @@ class Arclight():
 
     def mark_online_content(self, solrComponent, has_online_content):
         
-        for component in solrComponent._childDocuments_:
+        for component in solrComponent.components:
             if component.ref_ssi in has_online_content:
                 component.has_online_content_ssim = ["true"]
             childComponent = self.mark_online_content(component, has_online_content)
@@ -291,7 +291,6 @@ class Arclight():
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
             subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, inherited_data)
-            #solrDocument._childDocuments_.append(subcomponent)
             solrDocument.components.append(subcomponent)
 
         return solrDocument, has_online_content

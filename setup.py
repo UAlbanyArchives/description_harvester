@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="description_indexer",
-    version="0.0.2",
+    version="0.0.3",
     author="Gregory Wiedeman",
     author_email="gwiedeman@albany.edu",
     description="A tool for working with archival description for public access.",
