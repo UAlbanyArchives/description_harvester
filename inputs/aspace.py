@@ -131,9 +131,12 @@ class ArchivesSpace():
 
         # languages
         for language in apiObject["lang_materials"]:
-            lang_code = language['language_and_script']['language']
-            lang = languages.get(bibliographic=lang_code.lower())
-            record.languages.append(lang.name)
+            if "language_and_script" in language.keys():
+                lang_code = language['language_and_script']['language']
+                lang = languages.get(bibliographic=lang_code.lower())
+                record.languages.append(lang.name)
+            for lang_note in language['notes']:
+                record.languages.extend(lang_note['content'])
 
         # Agents and subjects could be a lot more detailed with their own objects
         # but this is a minimal implementation as I don't have good agent data to work with ¯\_(ツ)_/¯
