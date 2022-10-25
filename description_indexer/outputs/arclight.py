@@ -1,6 +1,6 @@
 import copy
 import pysolr
-from models.arclight import SolrCollection, SolrComponent
+from description_indexer.models.arclight import SolrCollection, SolrComponent
 
 class Arclight():
 
@@ -21,6 +21,7 @@ class Arclight():
 
         has_online_content = set()
 
+        print(f"converting to {record.id} to Solr documents...")
         solrDocument, has_online_content = self.convertCollection(record, has_online_content)
         
         if len(has_online_content) > 0:
@@ -159,8 +160,8 @@ class Arclight():
         solrDocument.repository_ssm = [record.repository] #this is wrong locally
         solrDocument.repository_sim = [record.repository]
 
-        solrDocument.level_ssm = [record.level]
-        solrDocument.level_sim = [record.level]
+        solrDocument.level_ssm = [record.level.title()]
+        solrDocument.level_sim = [record.level.title()]
 
         extents = []
         for extent in record.extents:
@@ -290,7 +291,8 @@ class Arclight():
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
             subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, inherited_data)
-            solrDocument._childDocuments_.append(subcomponent)
+            #solrDocument._childDocuments_.append(subcomponent)
+            solrDocument.components.append(subcomponent)
 
         return solrDocument, has_online_content
 

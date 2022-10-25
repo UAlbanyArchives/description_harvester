@@ -68,6 +68,5 @@ class Component(models.Base):
     physloc = fields.ListField(str)
 
     containers = fields.ListField(Container)
-    has_digital_object = fields.StringField()
     digital_objects = fields.ListField(DigitalObject)
     components = fields.ListField()

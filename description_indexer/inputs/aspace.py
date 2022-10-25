@@ -1,10 +1,9 @@
 import sys
-#pip install iso-639
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
-from models.description import Component, Date, Extent, Agent, Container, DigitalObject
-from utils import iso2DACS
+from description_indexer.models.description import Component, Date, Extent, Agent, Container, DigitalObject
+from description_indexer.utils import iso2DACS
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
 
@@ -33,7 +32,6 @@ class ArchivesSpace():
         Uses URL and login info from ~/.archivessnake.yml
         
         Parameters (one of):
-            id (int): a resource's ID from its ASpace URI. Such as 439 for /resources/439
             id (list): a set of a resource's id_ fields as strings, such as ["id_0", "id_1", "id_2", "id_3"]
             id (str): a resource's id_0 as a string
 
@@ -41,31 +39,61 @@ class ArchivesSpace():
             record (Component): a component object containing all description
         """
 
-        # for URI
-        if isinstance(id, int):
-            resource_resp = self.client.get(f'repositories/{str(self.repo)}/resources/{id}')
         # for single id_0
-        elif isinstance(id, list):
+        if isinstance(id, list):
             resources = self.client.get(f'repositories/{str(self.repo)}/find_by_id/resources?identifier[]={id}')
-            resource_resp = self.client.get(resources.json()['resources'][0]['ref'])
+            resource = self.client.get(resources.json()['resources'][0]['ref']).json()
         # for multiple id_0, id_1, etc.
         else:
             resources = self.client.get(f'repositories/{str(self.repo)}/find_by_id/resources?identifier[]=["{id}"]')
-            resource_resp = self.client.get(resources.json()['resources'][0]['ref'])
-        resource = resource_resp.json()
+            resource = self.client.get(resources.json()['resources'][0]['ref']).json()
 
         if resource["publish"] != True:
-            print ("Unpublished record")
+            print (f"Skipping unpublished resource {resource['id_0']}")
         else:
-
             eadid = resource["ead_id"]
             tree = self.client.get(resource['tree']['ref']).json()
-
             record = self.readToModel(resource, eadid, tree)
 
             return record
-    
 
+    def read_uri(self, uri):
+        """
+        Reads a resource and its associated archival objects
+        Uses URL and login info from ~/.archivessnake.yml
+        
+        Parameters:
+            uri (int): a resource's ID from its ASpace URI. Such as 439 for /resources/439
+
+        Returns:
+            record (Component): a component object containing all description
+        """
+
+        resource = self.client.get(f'repositories/{str(self.repo)}/resources/{str(uri)}').json()
+        
+        if resource["publish"] != True:
+            print ("Unpublished record")
+        else:
+            eadid = resource["ead_id"]
+            
+            tree = self.client.get(resource['tree']['ref']).json()
+            record = self.readToModel(resource, eadid, tree)
+            
+            return record
+    
+    def read_since(self, last_run_time):
+
+        records = []
+        modifiedList = self.client.get(f'repositories/{str(self.repo)}/resources?all_ids=true&modified_since={str(last_run_time)}').json()
+        if len(modifiedList) < 1:
+            print ("No collections modified since last run.")
+        else:
+            print (modifiedList)
+            for collection_uri in modifiedList:
+                record = self.read_uri(int(collection_uri))
+                records.append(record)
+
+        return records
 
     def readToModel(self, apiObject, eadid, tree, collection_name="", recursive_level=0):
         """
@@ -203,7 +231,6 @@ class ArchivesSpace():
                 digital_object = self.client.get(instance['digital_object']['ref']).json()
                 if digital_object['publish'] == True:
                     if "file_versions" in digital_object.keys() and len(digital_object['file_versions']) > 0:
-                        record.has_digital_object = "true"
                         dao = DigitalObject()
                         dao_title = digital_object['title']
                         # So ASpace DAOs can have multiple file versions for some reason so 
@@ -217,7 +244,7 @@ class ArchivesSpace():
                                     dao.label = dao_title
                                     record.digital_objects.append(dao)
 
-            
+        
         recursive_level += 1
 
         for child in tree['children']:

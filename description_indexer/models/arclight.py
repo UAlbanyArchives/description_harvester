@@ -76,7 +76,8 @@ class SolrCollection(models.Base):
     physloc_ssm = fields.ListField(str)
     containers_ssim = fields.ListField(str)
     digital_objects_ssm = fields.ListField(str)
-    _childDocuments_ = fields.ListField()
+    components = fields.ListField()
+    #_childDocuments_ = fields.ListField()
     
 
 class SolrComponent(SolrCollection):
