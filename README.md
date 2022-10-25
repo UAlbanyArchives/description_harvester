@@ -45,7 +45,7 @@ You can also use integers from ASpace URIs for resource, such as 263 for `https:
 
 Index collections modified in the past hour: `to-arclight --hour`
 
-Index collections modified in the past day: `to-arclight --today
+Index collections modified in the past day: `to-arclight --today`
 
 Index collections modified since las run: `to-arclight --new`
 
