@@ -55,3 +55,10 @@ You can delete one or more collections using the `--delete` argument in addition
 
 `to-arclight --id apap101 apap301 --delete`
 
+
+
+### Indexing Digital Objects
+
+Indexing digital object into Arclight requires Java and Apache Tika. 
+
+`java -jar tika-app.jar`

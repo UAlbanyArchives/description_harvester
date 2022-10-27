@@ -1,5 +1,11 @@
 from jsonmodels import models, fields, errors, validators
 
+"""
+This is designed to be an as-simple-as-possible data model
+for public-facing archival description that is neccessary
+for an access and discovery system
+"""
+
 class Date(models.Base):
     expression = fields.StringField(required=True)
     begin = fields.StringField(required=True)
@@ -11,6 +17,7 @@ class Extent(models.Base):
     unit = fields.StringField(required=True)
 
 class Agent(models.Base):
+    # Should be built out more but I don't have access to good agent data
     name = fields.StringField(required=True)
     agent_type = fields.StringField(required=True)
 
@@ -23,9 +30,18 @@ class Container(models.Base):
     sub_sub_container_indicator = fields.StringField()
 
 class DigitalObject(models.Base):
-    URI = fields.StringField()
-    label = fields.StringField()
-
+    # In EAD and ASpace
+    href = fields.StringField(required=True)
+    label = fields.StringField(required=True)
+    identifier = fields.StringField()
+    # In ASpace, not EAD
+    is_representative = fields.StringField(required=True)
+    # Not typically managed with description
+    filename = fields.StringField()
+    mime_type = fields.StringField()
+    metadata = fields.ListField(dict)
+    thumbnail_href = fields.StringField()
+    rights_statement = fields.StringField()
 
 class Component(models.Base):
     id = fields.StringField(required=True)

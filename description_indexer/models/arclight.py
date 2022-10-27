@@ -1,5 +1,10 @@
 from jsonmodels import models, fields, errors, validators
 
+"""
+This is a data model for the JSON that Arclight expects 
+to be POSTed to Solr.
+"""
+
 class SolrCollection(models.Base):
     id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)
@@ -77,7 +82,18 @@ class SolrCollection(models.Base):
     containers_ssim = fields.ListField(str)
     digital_objects_ssm = fields.ListField(str)
     components = fields.ListField()
-    #_childDocuments_ = fields.ListField()
+
+    # I guess collections can have representative DAOs
+    href_sim = fields.StringField()
+    label_ssm = fields.StringField()
+    identifier_sim = fields.StringField()
+    is_representative_sim = fields.StringField()
+    filename_sim = fields.StringField()
+    mime_type_sim = fields.StringField()
+    #metadata = fields.ListField(dict)
+    thumbnail_href_sim = fields.StringField()
+    rights_statement_ssm = fields.StringField()
+    #content_ssm = fields.StringField()
     
 
 class SolrComponent(SolrCollection):

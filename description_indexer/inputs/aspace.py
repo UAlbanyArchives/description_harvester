@@ -1,9 +1,11 @@
+import os
 import sys
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
 from description_indexer.models.description import Component, Date, Extent, Agent, Container, DigitalObject
 from description_indexer.utils import iso2DACS
+from description_indexer.dao_plugins import DaoSystem, import_dao_plugins
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
 
@@ -25,6 +27,31 @@ class ArchivesSpace():
         self.repo = repository
 
         self.repo_name = self.client.get('repositories/' + str(self.repo)).json()['name']
+
+
+
+        plugin_basedir = os.environ.get("DESCRIPTION_INDEXER_PLUGIN_DIR", None)
+        # Dao system plugins are loaded from:
+        #   1. dao_plugins directory inside the package (built-in)
+        #   2. .description_indexer/dao_plugins in user home directory
+        #   3. dao_plugins subdirectories in plugin dir set in environment variable
+        plugin_dirs = []
+        for dirs in plugin_dirs:
+            dirs.append(Path(f"~/.description_indexer/dao_plugins").expanduser())
+            if plugin_basedir:
+                dirs.append((Path(plugin_basedir) / dao_plugins).expanduser())
+        import_dao_plugins(plugin_dirs)
+
+        # Instantiate DAO systems
+        self.dao_systems = []
+        for system in self.dao_system_map.keys():
+            dao_system: DaoSystem = self.dao_system_map[system]
+            self.dao_systems.append(dao_system)
+
+    @property
+    def dao_system_map(self):
+        return DaoSystem.registry
+
 
     def read(self, id):
         """
@@ -231,17 +258,21 @@ class ArchivesSpace():
                 digital_object = self.client.get(instance['digital_object']['ref']).json()
                 if digital_object['publish'] == True:
                     if "file_versions" in digital_object.keys() and len(digital_object['file_versions']) > 0:
-                        dao = DigitalObject()
-                        dao_title = digital_object['title']
                         # So ASpace DAOs can have multiple file versions for some reason so 
                         # I guess I'm making a new dao for each with the same label?
                         for file_version in digital_object['file_versions']:
                             if "publish" in file_version.keys() and file_version != True:
                                 pass
                             else:
+                                dao = DigitalObject()
+                                if instance["is_representative"] == True and file_version["is_representative"] == True:
+                                    dao.is_representative = "true"
                                 if "file_uri" in file_version.keys():
-                                    dao.URI = file_version['file_uri']
-                                    dao.label = dao_title
+                                    dao.href = file_version['file_uri']
+                                    dao.label = digital_object['title']
+                                    dao.identifier = digital_object['digital_object_id']
+                                    for dao_system in self.dao_systems:
+                                        dao = dao_system.read_data(dao)
                                     record.digital_objects.append(dao)
 
         
