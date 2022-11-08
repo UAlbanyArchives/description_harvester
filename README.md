@@ -3,6 +3,8 @@ A tool for working with archival description for public access. description_inde
 
 description_indexer can index directly from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) to an Arclight Solr instance using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake) and [PySolr](https://github.com/django-haystack/pysolr).
 
+The [main branch](https://github.com/UAlbanyArchives/description_indexer) is designed to be a drop-in replacement for the Arclight Traject indexer, while the [dao-indexing branch](https://github.com/UAlbanyArchives/description_indexer/tree/dao-indexing) tries to fully index digital objects from digital repositories and other sources, including item-level metadata fields, embedded text, OCR text, and transcriptions. 
+
 This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs better error handling.
 
 ### Installation
