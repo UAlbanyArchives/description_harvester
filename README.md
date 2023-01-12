@@ -1,11 +1,11 @@
 # description_indexer
-A tool for working with archival description for public access. description_indexer reads archival description into a minimalist data model for public-facing archival description.
+A tool for working with archival description for public access. description_indexer reads archival description into a [minimalist data model for public-facing archival description](https://github.com/UAlbanyArchives/description_indexer/blob/main/description_indexer/models/description.py) and then converts it to the [Arclight data model](https://github.com/UAlbanyArchives/description_indexer/blob/main/description_indexer/models/arclight.py) and POSTs it into an Arclight Solr index using [PySolr](https://github.com/django-haystack/pysolr).
 
-description_indexer can index directly from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) to an Arclight Solr instance using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake) and [PySolr](https://github.com/django-haystack/pysolr).
+description_indexer is designed to be extensible and harvest archival description from a number of [sources](https://github.com/UAlbanyArchives/description_indexer/tree/main/description_indexer/inputs). Currently the only available source harvests data from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake). It is possible in the future to add modules for EAD2002 and other sources. Its also possible to add additional [output modules](https://github.com/UAlbanyArchives/description_indexer/tree/main/description_indexer/outputs) to serialize description to EAD or other formats in addition to or in replace of sending description to an Arclight Solr instance. This potential opens up new possibilities of managing description using low-barrier formats and tools.
 
 The [main branch](https://github.com/UAlbanyArchives/description_indexer) is designed to be a drop-in replacement for the Arclight Traject indexer, while the [dao-indexing branch](https://github.com/UAlbanyArchives/description_indexer/tree/dao-indexing) tries to fully index digital objects from digital repositories and other sources, including item-level metadata fields, embedded text, OCR text, and transcriptions. 
 
-This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs better error handling.
+This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs better error handling. Validation is also very minimal, but there is potential to add detailed validation with `jsonschema `.
 
 ### Installation
 
@@ -55,12 +55,4 @@ Index collections modified since las run: `to-arclight --new`
 
 You can delete one or more collections using the `--delete` argument in addition to`--id`. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
 
-`to-arclight --id apap101 apap301 --delete`
-
-
-
-### Indexing Digital Objects
-
-Indexing digital object into Arclight requires Java and Apache Tika. 
-
-`java -jar tika-app.jar`
+`o-arclight --id apap101 apap301 --delete`
