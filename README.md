@@ -55,4 +55,4 @@ Index collections modified since las run: `to-arclight --new`
 
 You can delete one or more collections using the `--delete` argument in addition to`--id`. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
 
-`o-arclight --id apap101 apap301 --delete`
+`to-arclight --id apap101 apap301 --delete`
