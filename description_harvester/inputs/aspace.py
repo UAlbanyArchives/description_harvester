@@ -3,9 +3,9 @@ import sys
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
-from description_indexer.models.description import Component, Date, Extent, Agent, Container, DigitalObject
-from description_indexer.utils import iso2DACS
-from description_indexer.dao_plugins import DaoSystem, import_dao_plugins
+from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
+from description_harvester.utils import iso2DACS
+from description_harvester.dao_plugins import DaoSystem, import_dao_plugins
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
 
@@ -30,14 +30,14 @@ class ArchivesSpace():
 
 
 
-        plugin_basedir = os.environ.get("DESCRIPTION_INDEXER_PLUGIN_DIR", None)
+        plugin_basedir = os.environ.get("DESCRIPTION_HARVESTER_PLUGIN_DIR", None)
         # Dao system plugins are loaded from:
         #   1. dao_plugins directory inside the package (built-in)
-        #   2. .description_indexer/dao_plugins in user home directory
+        #   2. .description_harvester/dao_plugins in user home directory
         #   3. dao_plugins subdirectories in plugin dir set in environment variable
         plugin_dirs = []
         for dirs in plugin_dirs:
-            dirs.append(Path(f"~/.description_indexer/dao_plugins").expanduser())
+            dirs.append(Path(f"~/.description_harvester/dao_plugins").expanduser())
             if plugin_basedir:
                 dirs.append((Path(plugin_basedir) / dao_plugins).expanduser())
         import_dao_plugins(plugin_dirs)

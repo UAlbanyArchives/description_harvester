@@ -1,6 +1,6 @@
 import copy
 import pysolr
-from description_indexer.models.arclight import SolrCollection, SolrComponent
+from description_harvester.models.arclight import SolrCollection, SolrComponent
 
 class Arclight():
 

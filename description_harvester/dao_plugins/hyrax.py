@@ -1,5 +1,5 @@
 import requests
-from description_indexer.dao_plugins import DaoSystem
+from description_harvester.dao_plugins import DaoSystem
 
 class Hyrax(DaoSystem):
 	dao_system_name = "hyrax"

@@ -5,18 +5,18 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from .configurator import Config
-from description_indexer.outputs.arclight import Arclight
-from description_indexer.inputs.aspace import ArchivesSpace
+from description_harvester.outputs.arclight import Arclight
+from description_harvester.inputs.aspace import ArchivesSpace
 
-parser = argparse.ArgumentParser(description='Description_Indexer manages archival description.')
+parser = argparse.ArgumentParser(description='Description_harvester manages archival description.')
 parser.add_argument('--id', nargs="+", help='One or more ASpace id_0s to index.')
 parser.add_argument('--uri', nargs="+", help='One or more ASpace collection uri integers to index, such as 755 for /resources/755.')
 parser.add_argument('--delete', default=False, action="store_true", help='an integer for the accumulator')
 parser.add_argument('--new', default=False, action="store_true", help='Index collections modified since last run.')
 parser.add_argument('--hour', default=False, action="store_true", help='Index collections modified in the last hour.')
 parser.add_argument('--today', default=False, action="store_true", help='Index collections modified in the last 24 hours.')
-parser.add_argument('--solr_url', nargs=1, help='A solr URL, such as http://127.0.0.1:8983/solr, to override ~/.description_indexer.yml')
-parser.add_argument('--core', nargs=1, help='A solr core, such as blacklight-core, to override ~/.description_indexer.yml')
+parser.add_argument('--solr_url', nargs=1, help='A solr URL, such as http://127.0.0.1:8983/solr, to override ~/.description_harvester.yml')
+parser.add_argument('--core', nargs=1, help='A solr core, such as blacklight-core, to override ~/.description_harvester.yml')
 #parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
 
 def index():
@@ -63,7 +63,7 @@ def index():
 		lastExportTime = time.time()
 		endTimeHuman = datetime.utcfromtimestamp(lastExportTime).strftime('%Y-%m-%d %H:%M:%S')
 		config.last_query = str(lastExportTime).split(".")[0]
-		with open(Path.home() / ".description_indexer.yml", "w") as f:
+		with open(Path.home() / ".description_harvester.yml", "w") as f:
 			yaml.dump(config.__dict__, f)
 		print (f"Stored last run time as: {endTimeHuman}")
 		
