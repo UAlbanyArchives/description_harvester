@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="description_harvester",
-    version="0.0.4",
+    version="0.0.5",
     author="Gregory Wiedeman",
     author_email="gwiedeman@albany.edu",
     description="A tool for working with archival description for public access.",
@@ -19,7 +19,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    entry_points={"console_scripts": ["to-arclight=description_harvester:index"]},
+    entry_points={"console_scripts": ["harvest=description_harvester:harvest"]},
     install_requires=[
         "archivessnake>=0.9.1,<1",
         "black>=22.1.0,<23",

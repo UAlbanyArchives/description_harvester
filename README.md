@@ -31,28 +31,28 @@ Once description_harvester is set up, you can index from the ASpace API to Arcli
 
 You can provide one or more IDs to index using a resource's id_0` field
 
-`to-arclight --id ua807`
+`harvest --id ua807`
 
-`to-arclight --id mss123 apap106`
+`harvest --id mss123 apap106`
 
 #### Index by URI
 
 You can also use integers from ASpace URIs for resource, such as 263 for `https://my.aspace.edu/resources/263`
 
-`to-arclight --uri 435`
+`harvest --uri 435`
 
-`to-arclight --uri 1 755`
+`harvest --uri 1 755`
 
 #### Indexing by modified time
 
-Index collections modified in the past hour: `to-arclight --hour`
+Index collections modified in the past hour: `harvest --hour`
 
-Index collections modified in the past day: `to-arclight --today`
+Index collections modified in the past day: `harvest --today`
 
-Index collections modified since las run: `to-arclight --new`
+Index collections modified since las run: `harvest --new`
 
 #### Deleting collections
 
 You can delete one or more collections using the `--delete` argument in addition to`--id`. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
 
-`to-arclight --id apap101 apap301 --delete`
+`harvest --id apap101 apap301 --delete`

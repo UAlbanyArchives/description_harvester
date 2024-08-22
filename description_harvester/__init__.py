@@ -19,7 +19,7 @@ parser.add_argument('--solr_url', nargs=1, help='A solr URL, such as http://127.
 parser.add_argument('--core', nargs=1, help='A solr core, such as blacklight-core, to override ~/.description_harvester.yml')
 #parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
 
-def index():
+def harvest():
 	config = Config()
 	args = parser.parse_args()
 	#print (args)
