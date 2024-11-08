@@ -45,7 +45,7 @@ def harvest():
 			records = aspace.read_since(time_since)
 			for record in records:
 				solrDoc = arclight.convert(record)
-				arclight.post(solrDoc)
+				#arclight.post(solrDoc)
 				print (f"Indexed {record.id}")
 		elif args.id:
 			for collection_id in args.id:

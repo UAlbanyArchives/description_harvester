@@ -72,35 +72,35 @@ class Arclight():
             solrDocument = SolrComponent()
 
         solrDocument.ead_ssi = [record.collection_id]
-        solrDocument.collection_unitid_ssm = [record.collection_id]
-        solrDocument.collection_unitid_teim = [record.collection_id]
 
         dates = []
-        normalized_dates = []
-        date_range = []
+        string_dates = []
+        date_set = []
         for date in record.dates:
-            if hasattr(date, "date_type") and date.date_type == "bulk":
-                normalized_date = "bulk "
+            if getattr(date, "date_type", None) == "bulk":
+                string_date = "bulk "
             else:
-                normalized_date = ""
-            if hasattr(date, "expression") and date.expression != None:
+                string_date = ""
+            if getattr(date, "expression", None) != None:
                 dates.append(date.expression)
-                normalized_date += date.expression
-            elif hasattr(date, "end") and date.end != None:
+                string_date += date.expression
+            elif getattr(date, "date_type", None) != None:
                 dates.append(f"{date.begin}-{date.end}")
-                normalized_date = f"{normalized_date}{date.begin}-{date.end}"
+                string_date = f"{string_date}{date.begin}-{date.end}"
             else:
                 dates.append(date.begin)
-                normalized_date += date.begin
-            date_range.append(int(date.begin.split("-")[0]))
-            if hasattr(date, "end") and date.end != None:
-                date_range.append(int(date.end.split("-")[0]))
-            normalized_dates.append(normalized_date)
-        solrDocument.date_range_sim = date_range
+                string_date += date.begin
+            date_set.append(int(date.begin.split("-")[0]))
+            if getattr(date, "end", None) != None:
+                date_set.append(int(date.end.split("-")[0]))
+            string_dates.append(string_date)
+        solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
         solrDocument.unitdate_ssm = dates
-        solrDocument.normalized_date_ssm = [", ".join(normalized_dates)]
+        solrDocument.normalized_date_ssm = [", ".join(string_dates)]
 
         solrDocument.title_ssm = [record.title]
+        solrDocument.title_tesim = [record.title]
+        solrDocument.title_filing_ssi = record.title_filing_ssi
 
         solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
         solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
@@ -108,9 +108,7 @@ class Arclight():
             solrDocument.id = record.id.replace(".", "-")
             solrDocument.unitid_ssm = [record.collection_id]
             solrDocument.unitid_teim = [record.collection_id]
-            solrDocument.collection_ssm = solrDocument.normalized_title_ssm
-            solrDocument.collection_sim = solrDocument.normalized_title_ssm
-            solrDocument.collection_ssi = solrDocument.normalized_title_ssm
+            solrDocument.collection_ssim = solrDocument.normalized_title_ssm
             inherited_data['collection_name'] = solrDocument.normalized_title_ssm
             col_creators = []
             for col_creator in record.creators:
@@ -131,24 +129,26 @@ class Arclight():
             solrDocument.collection_ssm = inherited_data['collection_name']
             solrDocument.collection_sim = inherited_data['collection_name']
             solrDocument.collection_ssi = inherited_data['collection_name']
-            if "collection_creator" in inherited_data.keys():
-                solrDocument.collection_creator_ssm = inherited_data['collection_creator']
+            #v1.4 doesn't appear to store this anymore
+            #if "collection_creator" in inherited_data.keys():
+            #    solrDocument.collection_creator_ssm = inherited_data['collection_creator']
 
+            # not sure why this is stored twice
             solrDocument.parent_ssim = parents
-            #solrDocument.parent_ssm = parents
+            solrDocument.parent_ids_ssim = parents
             # parent_ssi appears to be only the immediate parent
             if len(parents) > 0:
                 solrDocument.parent_ssi = [parents[-1]]
 
             solrDocument.parent_unittitles_ssm = parent_titles
-            solrDocument.parent_unittitles_teim = parent_titles
+            solrDocument.parent_unittitles_tesim = parent_titles
             solrDocument.parent_levels_ssm = parent_levels
             solrDocument.component_level_isim = [recursive_level]
-            solrDocument.child_component_count_isim = [inherited_data["child_component_count"]]
+            solrDocument.child_component_count_isi = [inherited_data["child_component_count"]]
             if "parent_access_restrict" in inherited_data.keys():
-                solrDocument.parent_access_restrict_ssm = inherited_data["parent_access_restrict"]
+                solrDocument.parent_access_restrict_tesm = inherited_data["parent_access_restrict"]
             if "parent_access_terms" in inherited_data.keys():
-                solrDocument.parent_access_terms_ssm = inherited_data["parent_access_terms"]
+                solrDocument.parent_access_terms_tesm = inherited_data["parent_access_terms"]
 
             new_parents = copy.deepcopy(parents)
             new_parents.append(record.id.replace(".", "-"))
@@ -158,24 +158,25 @@ class Arclight():
             new_parent_levels.append(record.level)
 
         solrDocument.repository_ssm = [record.repository] #this is wrong locally
-        solrDocument.repository_sim = [record.repository]
+        solrDocument.repository_ssim = [record.repository]
 
         solrDocument.level_ssm = [record.level.title()]
-        solrDocument.level_sim = [record.level.title()]
+        solrDocument.level_ssim = [record.level.title()]
 
         extents = []
         for extent in record.extents:
             extents.append(f"{extent.number} {extent.unit}")
         solrDocument.extent_ssm = extents
+        solrDocument.extent_tesim = extents
 
         if hasattr(record, "languages") and len(record.languages) > 0:
-            solrDocument.language_ssm = [", ".join(record.languages)]
+            solrDocument.language_ssim = [", ".join(record.languages)]
 
         # I think the ASpace Agent updates added many more of these that Arclight doesn't handle atm
         agent_translations = {
-            "corporate_entity": "corpname_ssm",
-            "family": "famname_ssm",
-            "person": "persname_ssm"
+            "corporate_entity": "corpname_ssim",
+            "family": "famname_ssim",
+            "person": "persname_ssim"
         }
         # Agents are wonky in the default indexer which this recreates, but it should probably be thought out better. I don't have great data to do it right
         creators = []
@@ -184,68 +185,74 @@ class Arclight():
             creators.append(creator.name)
             if creator.agent_type in agent_translations.keys():
                 setattr(solrDocument, agent_translations[creator.agent_type], [creator.name])
-                setattr(solrDocument, "creator_" + agent_translations[creator.agent_type], [creator.name])
+                #setattr(solrDocument, "creator_" + agent_translations[creator.agent_type], [creator.name])
                 setattr(solrDocument, "creator_" + agent_translations[creator.agent_type].rsplit("_", 1)[0] + "_ssim", [creator.name])
             else:
                 names.append(creator.name)
         solrDocument.creator_ssm = creators
         solrDocument.creator_ssim = creators
-        solrDocument.creators_ssim = creators
-        for name in record.names:
-            names.append(name.name)
+        solrDocument.creator_sort = creators
+        for agent in record.agents:
+            names.append(agent.name)
             if name.agent_type in agent_translations.keys():
-                setattr(solrDocument, agent_translations[name.agent_type], [name.name])
+                setattr(solrDocument, agent_translations[agent.agent_type], [agent.name])
         solrDocument.names_ssim = names
-        # I stopped implementing this until agents are reworked, as its not used by the UI
-        #solrDocument.names_coll_ssim
+        solrDocument.names_coll_ssim = names
 
-        # Seems imprecise, but this is how what the exiting indexer does.
         solrDocument.access_subjects_ssm = record.subjects
         solrDocument.access_subjects_ssim = record.subjects
+        solrDocument.genreform_ssim = record.genreform
+
+        # Seems imprecise, but this is how what the existing indexer does.
+        # Still does this as of v1.4
         solrDocument.geogname_ssm = record.places
-        solrDocument.geogname_sim = record.places
-        solrDocument.places_sim = record.places
-        solrDocument.places_ssm = record.places
+        solrDocument.geogname_ssim = record.places
         solrDocument.places_ssim = record.places
 
         # Notes
-        note_translations = {
-            "abstract": "abstract_ssm",
-            "physloc": "physloc_ssm",
-            "processinfo": "processinfo_ssm",
-            "bioghist": "bioghist_ssm",
-            "scopecontent": "scopecontent_ssm",
-            "arrangement": "arrangement_ssm",
-            "acqinfo": "acqinfo_ssim",
-            "accessrestrict": "accessrestrict_ssm",
-            "userestrict": "userestrict_ssm",
-            "prefercite": "prefercite_ssm",
-            "odd": "odd_ssm",
-            "originalsloc": "originalsloc_ssm",
-            "altformavail": "altformavail_ssm",
-            "separatedmaterial": "separatedmaterial_ssm",
-            "relatedmaterial": "relatedmaterial_ssm",
-            "custodhist": "custodhist_ssm",
-            "phystech": "phystech_ssm",
-            "otherfindaid": "otherfindaid_ssm",
-            "accruals": "accruals_ssm",
-            "appraisal": "appraisal_ssm",
-            "fileplan": "fileplan_ssm",
-            "materialspec": "materialspec_ssm",
-            "bibliography": "bibliography_ssm",
-            "dimensions": "dimensions_ssm",
-            "note ": "note_ssm"
-        }
+        notes = [
+            "abstract",
+            "physloc",
+            "processinfo",
+            "bioghist",
+            "scopecontent",
+            "arrangement",
+            "acqinfo",
+            "accessrestrict",
+            "userestrict",
+            "prefercite",
+            "odd",
+            "originalsloc",
+            "altformavail",
+            "separatedmaterial",
+            "relatedmaterial",
+            "custodhist",
+            "phystech",
+            "otherfindaid",
+            "accruals",
+            "appraisal",
+            "fileplan",
+            "materialspec",
+            "bibliography",
+            "dimensions",
+            "note"
+        ]
         for note in dir(record):
-            if note in note_translations.keys():
+            if note in notes:
                 note_text = getattr(record, note)
-                setattr(solrDocument, note_translations[note], note_text)
-                if note == "accessrestrict":
-                    inherited_data["parent_access_restrict"] = []
-                    inherited_data["parent_access_restrict"].extend(note_text)
-                if note == "userestrict":
-                    inherited_data["parent_access_terms"] = []
-                    inherited_data["parent_access_terms"].extend(note_text)
+                if note == "acqinfo":
+                    setattr(solrDocument, note + "_ssim", note_text)
+                else:
+                    setattr(solrDocument, note + "_tesim", note_text)
+                    if getattr(record, note + "_heading", None):
+                        setattr(solrDocument, note + "_heading_ssm", [getattr(record, note + "_heading", None)])
+                    if note == "accessrestrict":
+                        inherited_data["parent_access_restrict"] = []
+                        inherited_data["parent_access_restrict"].extend(note_text)
+                    elif note == "userestrict":
+                        inherited_data["parent_access_terms"] = []
+                        inherited_data["parent_access_terms"].extend(note_text)
+                        solrDocument.access_terms_ssm = note_text
 
         # Containers
         # This is a bit nuts, but it was just as much code as a function so I left it explicit

@@ -145,6 +145,7 @@ class ArchivesSpace():
         record = Component()
         
         record.title = apiObject["title"]
+        record.title_filing_ssi = apiObject.get("finding_aid_filing_title", None)
         record.repository = self.repo_name
         record.level = apiObject["level"]
 
@@ -204,12 +205,14 @@ class ArchivesSpace():
             if agent_ref['role'] == "creator":
                 record.creators.append(agentObj)
             else:
-                record.names.append(agentObj)
+                record.agents.append(agentObj)
         # Subjects
         for subject_ref in apiObject['subjects']:
             subject = self.client.get(subject_ref['ref']).json()
             # ASpace allows multiple terms per subject, and each can be geo, topical, etc. so I'm just using the first one.
-            if subject['terms'][0]['term_type'] == "geographic":
+            if subject['terms'][0]['term_type'] == "genre_form":
+                record.genreform.append(subject['title'])
+            elif subject['terms'][0]['term_type'] == "geographic":
                 record.places.append(subject['title'])
             else:
                 record.subjects.append(subject['title'])
@@ -217,6 +220,8 @@ class ArchivesSpace():
         # Notes
         for note in apiObject["notes"]:
             if note['publish'] == True:
+                if "label" in note.keys():
+                    setattr(record, note["type"] + "_heading", note["label"])
                 if note["jsonmodel_type"] == "note_singlepart":
                     setattr(record, note["type"], note["content"])
                 else:
