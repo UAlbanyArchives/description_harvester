@@ -6,7 +6,7 @@ from description_harvester.models.arclight import SolrCollection, SolrComponent
 class Arclight():
 
 
-    def __init__(self, solr_url):
+    def __init__(self, solr_url, repository_name):
         """
         Connects to an accessible Solr instance with pysolr.
 
@@ -16,6 +16,8 @@ class Arclight():
 
         self.solr = pysolr.Solr(solr_url, always_commit=True)
         self.solr.ping()
+
+        self.repository_name = repository_name
         
 
     def convert(self, record):
@@ -98,7 +100,8 @@ class Arclight():
             if getattr(date, "end", None) != None:
                 date_set.append(int(date.end.split("-")[0]))
             string_dates.append(string_date)
-        solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
+        if len(date_set) > 0:
+            solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
         solrDocument.unitdate_ssm = dates
         solrDocument.normalized_date_ssm = [", ".join(string_dates)]
 
@@ -162,10 +165,12 @@ class Arclight():
             new_parent_levels = copy.deepcopy(parent_levels)
             new_parent_levels.append(record.level)
 
-        #solrDocument.repository_ssm = [record.repository] #this is wrong locally
-        solrDocument.repository_ssm = ["New York State Modern Political Archive"]
-        #solrDocument.repository_ssim = [record.repository]
-        solrDocument.repository_ssim = ["New York State Modern Political Archive"]
+        if self.repository_name:
+            solrDocument.repository_ssim = [self.repository_name]
+            solrDocument.repository_ssm = [self.repository_name]
+        else:
+            solrDocument.repository_ssm = [record.repository]
+            solrDocument.repository_ssim = [record.repository]
 
         extents = []
         for extent in record.extents:
