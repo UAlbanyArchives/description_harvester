@@ -1,5 +1,8 @@
 import os
 import sys
+from lxml import etree
+from io import StringIO
+from typing import List
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
@@ -51,6 +54,31 @@ class ArchivesSpace():
     @property
     def dao_system_map(self):
         return DaoSystem.registry
+
+
+    def extract_xpath_text(self, text: str) -> List[str]:
+        try:
+            # Parse the string as HTML content (allowing lenient parsing with 'recover=True')
+            parser = etree.HTMLParser(recover=True)
+            tree = etree.parse(StringIO(text), parser)
+
+            # Find all elements, excluding <html> and <body> tags
+            elements = tree.xpath("//*[not(self::html or self::body)]")
+
+            # Process elements and split text by newlines
+            cleaned_texts = [
+                line.strip()  # Strip any leading/trailing whitespace from each line
+                for e in elements
+                for line in etree.tostring(e, encoding="unicode", method="html").splitlines()  # Split into lines
+                if line.strip()  # Only include non-empty lines
+            ]
+
+            return cleaned_texts
+
+        except etree.XMLSyntaxError as e:
+            # Handle parsing errors by returning text split by newlines
+            print(f"Error parsing HTML: {e}")
+            return [line.strip() for line in text.splitlines() if line.strip()]  # Handle raw text splitting by lines
 
 
     def read(self, id):
@@ -229,7 +257,7 @@ class ArchivesSpace():
                     for subnote in note["subnotes"]:
                         if subnote['publish'] == True:
                             if "content" in subnote.keys():
-                                note_text.append(subnote["content"])
+                                note_text.extend(self.extract_xpath_text(subnote["content"]))
                             elif subnote['jsonmodel_type'] == "note_chronology":
                                 events = []
                                 for event in subnote["items"]:

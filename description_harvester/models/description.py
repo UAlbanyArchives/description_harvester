@@ -111,7 +111,7 @@ class Component(models.Base):
     physloc_heading = fields.StringField()
     dimensions = fields.ListField(str)
     dimensions_heading = fields.StringField()
-
+    
 
 
     containers = fields.ListField(Container)

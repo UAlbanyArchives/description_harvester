@@ -1,5 +1,6 @@
 import copy
 import pysolr
+from bs4 import BeautifulSoup
 from description_harvester.models.arclight import SolrCollection, SolrComponent
 
 class Arclight():
@@ -73,6 +74,9 @@ class Arclight():
 
         solrDocument.ead_ssi = [record.collection_id]
 
+        solrDocument.level_ssm = [record.level.title().lower()]
+        solrDocument.level_ssim = [record.level.title()]
+
         dates = []
         string_dates = []
         date_set = []
@@ -100,10 +104,11 @@ class Arclight():
 
         solrDocument.title_ssm = [record.title]
         solrDocument.title_tesim = [record.title]
+        # this this empty for components, which I think is fine. v1.4 just uses the title field
         solrDocument.title_filing_ssi = record.title_filing_ssi
 
         solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
-        solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
+        #solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
         if record.level == "collection":
             solrDocument.id = record.id.replace(".", "-")
             solrDocument.unitid_ssm = [record.collection_id]
@@ -157,11 +162,10 @@ class Arclight():
             new_parent_levels = copy.deepcopy(parent_levels)
             new_parent_levels.append(record.level)
 
-        solrDocument.repository_ssm = [record.repository] #this is wrong locally
-        solrDocument.repository_ssim = [record.repository]
-
-        solrDocument.level_ssm = [record.level.title()]
-        solrDocument.level_ssim = [record.level.title()]
+        #solrDocument.repository_ssm = [record.repository] #this is wrong locally
+        solrDocument.repository_ssm = ["New York State Modern Political Archive"]
+        #solrDocument.repository_ssim = [record.repository]
+        solrDocument.repository_ssim = ["New York State Modern Political Archive"]
 
         extents = []
         for extent in record.extents:
@@ -194,7 +198,7 @@ class Arclight():
         solrDocument.creator_sort = creators
         for agent in record.agents:
             names.append(agent.name)
-            if name.agent_type in agent_translations.keys():
+            if agent.agent_type in agent_translations.keys():
                 setattr(solrDocument, agent_translations[agent.agent_type], [agent.name])
         solrDocument.names_ssim = names
         solrDocument.names_coll_ssim = names
@@ -243,16 +247,25 @@ class Arclight():
                 if note == "acqinfo":
                     setattr(solrDocument, note + "_ssim", note_text)
                 else:
-                    setattr(solrDocument, note + "_tesim", note_text)
+                    stripped_text = [BeautifulSoup(f"<html><body>{item}</body></html>", "html.parser").get_text() for item in note_text]
+                    setattr(solrDocument, note + "_tesim", stripped_text)
+                    setattr(solrDocument, note + "_html_tesm", note_text)
                     if getattr(record, note + "_heading", None):
                         setattr(solrDocument, note + "_heading_ssm", [getattr(record, note + "_heading", None)])
                     if note == "accessrestrict":
-                        inherited_data["parent_access_restrict"] = []
-                        inherited_data["parent_access_restrict"].extend(note_text)
+                        #inherited_data["parent_access_restrict"] = []
+                        if "parent_access_restrict" in inherited_data.keys():
+                            inherited_data["parent_access_restrict"].extend(stripped_text)
+                        else:
+                            inherited_data["parent_access_restrict"] = stripped_text
                     elif note == "userestrict":
-                        inherited_data["parent_access_terms"] = []
-                        inherited_data["parent_access_terms"].extend(note_text)
+                        #inherited_data["parent_access_terms"] = []
+                        if "parent_access_terms" in inherited_data.keys():
+                            inherited_data["parent_access_terms"].extend(stripped_text)
+                        else:
+                            inherited_data["parent_access_terms"] = stripped_text
                         solrDocument.access_terms_ssm = note_text
+
 
         # Containers
         # This is a bit nuts, but it was just as much code as a function so I left it explicit
@@ -317,9 +330,12 @@ class Arclight():
         # bump recursion level
         recursive_level += 1
 
+        order_counter = 0
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
             subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, inherited_data)
+            order_counter += 1
+            subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)
 
         return solrDocument, has_online_content
