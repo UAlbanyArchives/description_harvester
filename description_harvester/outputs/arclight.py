@@ -253,20 +253,13 @@ class Arclight():
                     if getattr(record, note + "_heading", None):
                         setattr(solrDocument, note + "_heading_ssm", [getattr(record, note + "_heading", None)])
                     if note == "accessrestrict":
-                        #inherited_data["parent_access_restrict"] = []
-                        if "parent_access_restrict" in inherited_data.keys():
-                            inherited_data["parent_access_restrict"].extend(stripped_text)
-                        else:
-                            inherited_data["parent_access_restrict"] = stripped_text
+                        inherited_data.setdefault("parent_access_restrict", []).extend(stripped_text)
                     elif note == "userestrict":
-                        #inherited_data["parent_access_terms"] = []
-                        if "parent_access_terms" in inherited_data.keys():
-                            inherited_data["parent_access_terms"].extend(stripped_text)
-                        else:
-                            inherited_data["parent_access_terms"] = stripped_text
-                        solrDocument.access_terms_ssm = note_text
+                        inherited_data.setdefault("parent_access_terms", []).extend(stripped_text)
+                        # Dunno why it does this. ¯\_(ツ)_/¯
+                        solrDocument.access_terms_ssm = stripped_text
 
-
+        
         # Containers
         # This is a bit nuts, but it was just as much code as a function so I left it explicit
         containers_ssim = []
@@ -333,7 +326,7 @@ class Arclight():
         order_counter = 0
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
-            subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, inherited_data)
+            subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
             order_counter += 1
             subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)
