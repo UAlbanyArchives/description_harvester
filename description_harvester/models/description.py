@@ -29,19 +29,70 @@ class Container(models.Base):
     sub_sub_container = fields.StringField()
     sub_sub_container_indicator = fields.StringField()
 
+
+
 class DigitalObject(models.Base):
-    # In EAD and ASpace
-    href = fields.StringField(required=True)
-    label = fields.StringField(required=True)
-    identifier = fields.StringField()
-    # In ASpace, not EAD
-    is_representative = fields.StringField(required=True)
-    # Not typically managed with description
-    filename = fields.StringField()
-    mime_type = fields.StringField()
-    metadata = fields.ListField(dict)
+    identifier = fields.StringField(required=True)
+    label = fields.StringField()
+    action = fields.StringField(required=True)
+    type = fields.StringField(required=True)
+    access_condition = fields.StringField(required=True)
     thumbnail_href = fields.StringField()
     rights_statement = fields.StringField()
+    metadata = fields.ListField(dict)
+
+"""
+This block is only if we switch to pydantic
+from pydantic import BaseModel, HttpUrl
+from typing import Literal, List, Optional, Dict, Any
+
+ALLOWED_METADATA_FIELDS = {
+    "dado_title",
+    "dado_date_display",
+    "dado_subject",
+    "dado_description",
+    "dado_processing_activity"
+}
+
+class DigitalObject(BaseModel):
+    identifier: str
+    label: Optional[str] = None
+    action: Literal["embed", "link", "none"]
+    type: Literal[
+        "http://purl.org/dc/dcmitype/Collection",
+        "http://purl.org/dc/dcmitype/StillImage",
+        "http://purl.org/dc/dcmitype/InteractiveResource",
+        "http://purl.org/dc/dcmitype/MovingImage",
+        "http://purl.org/dc/dcmitype/Sound",
+        "http://purl.org/dc/dcmitype/Text"
+    ]
+    access_condition: Literal["open", "closed"]
+    thumbnail_href: Optional[HttpUrl] = None
+    rights_statement: Optional[Literal[
+        "https://rightsstatements.org/vocab/InC/1.0/",
+        "https://rightsstatements.org/vocab/InC-EDU/1.0/",
+        "https://creativecommons.org/licenses/by/4.0/",
+        "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+    ]] = None
+    metadata: List[Dict[str, Any]] = []
+
+    # Validate that all metadata fields are allowed
+    @field_validator("metadata")
+    @classmethod
+    def validate_metadata(cls, metadata):
+        for item in metadata:
+            invalid_keys = set(item.keys()) - ALLOWED_METADATA_FIELDS
+            if invalid_keys:
+                raise ValueError(f"Invalid metadata keys: {invalid_keys}. Allowed keys: {ALLOWED_METADATA_FIELDS}")
+
+            # Ensure that "dado_subject" is a list of strings if present
+            if "dado_subject" in item:
+                if not isinstance(item["dado_subject"], list):
+                    raise ValueError("dado_subject must be a list of strings.")
+                if not all(isinstance(subject, str) for subject in item["dado_subject"]):
+                    raise ValueError("Each entry in dado_subject must be a string.")
+        return metadata
+"""
 
 class Component(models.Base):
     id = fields.StringField(required=True)
