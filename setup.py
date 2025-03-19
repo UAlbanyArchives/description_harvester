@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="description_harvester",
-    version="0.1.1",
+    version="0.2.0",
     author="Gregory Wiedeman",
     author_email="gwiedeman@albany.edu",
     description="A tool for working with archival description for public access.",

@@ -56,3 +56,13 @@ Index collections modified since las run: `harvest --new`
 You can delete one or more collections using the `--delete` argument in addition to`--id`. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
 
 `harvest --id apap101 apap301 --delete`
+
+#### Use as a library
+
+You can also use description harvester in a script
+
+```
+from description_harvester import harvest
+
+harvest(["--id", "myid001"])
+```
