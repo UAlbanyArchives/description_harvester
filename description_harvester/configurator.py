@@ -13,7 +13,7 @@ class Config:
 
 	def read_repositories(slug):
 		"""
-		Reads the `.repositories.yml` configuration file from the user's home directory
+		Reads the `repositories.yml` configuration file from the user's home directory
 		and retrieves the `name` of a repository based on the provided slug.
 
 		Parameters:

@@ -1,6 +1,7 @@
 import copy
 import pysolr
 from bs4 import BeautifulSoup
+from description_harvester.utils import extract_years
 from description_harvester.models.arclight import SolrCollection, SolrComponent
 
 class Arclight():
@@ -95,10 +96,19 @@ class Arclight():
             else:
                 dates.append(date.begin)
                 string_date += date.begin
-            date_set.append(int(date.begin.split("-")[0]))
-            if getattr(date, "end", None) != None:
-                date_set.append(int(date.end.split("-")[0]))
             string_dates.append(string_date)
+            
+            if getattr(date, "begin", None) != None:
+                date_set.append(int(date.begin.split("-")[0]))
+                if getattr(date, "end", None) != None:
+                    date_set.append(int(date.end.split("-")[0]))
+            elif getattr(date, "expression", None) != None:
+                try:
+                    date_set = extract_years(date.expression)
+                    date_list = list(range(min(date_set), max(date_set) + 1))
+                except:
+                    print (f"WARNING: Unable to extract year range for expression-only date {date.expression}. Date facet will not work for this component.")
+
         if len(date_set) > 0:
             solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
         solrDocument.unitdate_ssm = dates

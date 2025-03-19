@@ -1,4 +1,5 @@
 #Functions to make DACS dates from timestamps and ISO dates
+import re
 
 def stamp2DACS(timestamp):
 	calendar = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}
@@ -31,3 +32,27 @@ def iso2DACS(normalDate):
 	else:
 		displayDate = normalDate
 	return displayDate
+
+
+def extract_years(date_string):
+    # Initialize an empty set to store unique years
+    years = set()
+
+    # Regular expression to match year ranges, e.g., "1988-2001"
+    range_pattern = r'(\d{4})-(\d{4})'
+    # Regular expression to match individual years in text (e.g., "1988 July 29")
+    individual_year_pattern = r'(\d{4})'
+
+    # Find all year ranges and individual years in the date string
+    ranges = re.findall(range_pattern, date_string)
+    individual_years = re.findall(individual_year_pattern, date_string)
+
+    # Add years from the ranges to the set (inclusive)
+    for start, end in ranges:
+        years.update(range(int(start), int(end) + 1))  # `range` is inclusive of start but exclusive of end
+
+    # Add individual years directly to the set
+    years.update(int(year) for year in individual_years)
+
+    # Return the sorted list of unique years
+    return sorted(years)
