@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="description_harvester",
-    version="0.0.5",
+    version="0.1.0",
     author="Gregory Wiedeman",
     author_email="gwiedeman@albany.edu",
     description="A tool for working with archival description for public access.",
@@ -23,7 +23,7 @@ setuptools.setup(
     install_requires=[
         "archivessnake>=0.9.1,<1",
         "beautifulsoup4>=4.12.0",
-        "black>=22.1.0,<23",
+        "black>=22.1.0",
         "iso-639>=0.4.5,<1",
         "lxml>=5.0.0",
         "pysolr>=3.9.0,<4",
