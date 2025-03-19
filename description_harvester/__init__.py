@@ -17,9 +17,11 @@ parser.add_argument('--hour', default=False, action="store_true", help='Index co
 parser.add_argument('--today', default=False, action="store_true", help='Index collections modified in the last 24 hours.')
 parser.add_argument('--solr_url', nargs=1, help='A solr URL, such as http://127.0.0.1:8983/solr, to override ~/.description_harvester.yml')
 parser.add_argument('--core', nargs=1, help='A solr core, such as blacklight-core, to override ~/.description_harvester.yml')
+parser.add_argument('--repo', help="A repository slug used by ArcLight. This will set the repository name using ArcLight's ~/repositories.yml")
 #parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
 
 def harvest():
+	start_time = time.time()
 	config = Config()
 	args = parser.parse_args()
 	#print (args)
@@ -33,7 +35,12 @@ def harvest():
 			solr.delete(id=collection_id.replace(".", "-"))
 			print (f"Deleted {collection_id}")
 	else:
-		arclight = Arclight(config.solr_url + "/" + config.solr_core)
+		if args.repo:
+			repository_name = Config.read_repositories(args.repo)
+		else:
+			repository_name = None
+
+		arclight = Arclight(config.solr_url + "/" + config.solr_core, repository_name)
 		aspace = ArchivesSpace()
 		if args.new or args.hour or args.today:
 			if args.new:
@@ -45,7 +52,7 @@ def harvest():
 			records = aspace.read_since(time_since)
 			for record in records:
 				solrDoc = arclight.convert(record)
-				#arclight.post(solrDoc)
+				arclight.post(solrDoc)
 				print (f"Indexed {record.id}")
 		elif args.id:
 			for collection_id in args.id:
@@ -66,4 +73,7 @@ def harvest():
 		with open(Path.home() / ".description_harvester.yml", "w") as f:
 			yaml.dump(config.__dict__, f)
 		print (f"Stored last run time as: {endTimeHuman}")
-		
+	end_time = time.time()
+	duration = end_time - start_time
+	print(f"Execution time: {duration:.4f} seconds")
+	

@@ -8,7 +8,8 @@ for an access and discovery system
 
 class Date(models.Base):
     expression = fields.StringField(required=True)
-    begin = fields.StringField(required=True)
+    # begin *should* be required but ASpace doesn't actually require it
+    begin = fields.StringField()
     end = fields.StringField()
     date_type = fields.StringField()
 
@@ -30,18 +31,14 @@ class Container(models.Base):
     sub_sub_container_indicator = fields.StringField()
 
 class DigitalObject(models.Base):
-    # In EAD and ASpace
-    href = fields.StringField(required=True)
-    label = fields.StringField(required=True)
-    identifier = fields.StringField()
-    # In ASpace, not EAD
-    is_representative = fields.StringField(required=True)
-    # Not typically managed with description
-    filename = fields.StringField()
-    mime_type = fields.StringField()
-    metadata = fields.ListField(dict)
+    identifier = fields.StringField(required=True)
+    label = fields.StringField()
+    action = fields.StringField(required=True)
+    type = fields.StringField(required=True)
+    access_condition = fields.StringField(required=True)
     thumbnail_href = fields.StringField()
     rights_statement = fields.StringField()
+    metadata = fields.ListField(dict)
 
 class Component(models.Base):
     id = fields.StringField(required=True)
@@ -111,7 +108,7 @@ class Component(models.Base):
     physloc_heading = fields.StringField()
     dimensions = fields.ListField(str)
     dimensions_heading = fields.StringField()
-
+    
 
 
     containers = fields.ListField(Container)

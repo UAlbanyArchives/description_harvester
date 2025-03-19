@@ -1,11 +1,12 @@
 import copy
 import pysolr
+from bs4 import BeautifulSoup
 from description_harvester.models.arclight import SolrCollection, SolrComponent
 
 class Arclight():
 
 
-    def __init__(self, solr_url):
+    def __init__(self, solr_url, repository_name):
         """
         Connects to an accessible Solr instance with pysolr.
 
@@ -15,6 +16,8 @@ class Arclight():
 
         self.solr = pysolr.Solr(solr_url, always_commit=True)
         self.solr.ping()
+
+        self.repository_name = repository_name
         
 
     def convert(self, record):
@@ -68,10 +71,12 @@ class Arclight():
 
         if record.level == "collection":
             solrDocument = SolrCollection()
+            solrDocument.ead_ssi = [record.collection_id]
         else:
             solrDocument = SolrComponent()
 
-        solrDocument.ead_ssi = [record.collection_id]
+        solrDocument.level_ssm = [record.level.title().lower()]
+        solrDocument.level_ssim = [record.level.title()]
 
         dates = []
         string_dates = []
@@ -94,21 +99,25 @@ class Arclight():
             if getattr(date, "end", None) != None:
                 date_set.append(int(date.end.split("-")[0]))
             string_dates.append(string_date)
-        solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
+        if len(date_set) > 0:
+            solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
         solrDocument.unitdate_ssm = dates
         solrDocument.normalized_date_ssm = [", ".join(string_dates)]
 
         solrDocument.title_ssm = [record.title]
         solrDocument.title_tesim = [record.title]
+        # this this empty for components, which I think is fine. v1.4 just uses the title field
         solrDocument.title_filing_ssi = record.title_filing_ssi
 
         solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
-        solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
+        solrDocument.component_level_isim = [recursive_level]
+        #solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
         if record.level == "collection":
             solrDocument.id = record.id.replace(".", "-")
             solrDocument.unitid_ssm = [record.collection_id]
-            solrDocument.unitid_teim = [record.collection_id]
+            solrDocument.unitid_tesim = [record.collection_id]
             solrDocument.collection_ssim = solrDocument.normalized_title_ssm
+            solrDocument.sort_isi = 0
             inherited_data['collection_name'] = solrDocument.normalized_title_ssm
             col_creators = []
             for col_creator in record.creators:
@@ -129,6 +138,7 @@ class Arclight():
             solrDocument.collection_ssm = inherited_data['collection_name']
             solrDocument.collection_sim = inherited_data['collection_name']
             solrDocument.collection_ssi = inherited_data['collection_name']
+            solrDocument.collection_ssim = inherited_data['collection_name']
             #v1.4 doesn't appear to store this anymore
             #if "collection_creator" in inherited_data.keys():
             #    solrDocument.collection_creator_ssm = inherited_data['collection_creator']
@@ -143,7 +153,7 @@ class Arclight():
             solrDocument.parent_unittitles_ssm = parent_titles
             solrDocument.parent_unittitles_tesim = parent_titles
             solrDocument.parent_levels_ssm = parent_levels
-            solrDocument.component_level_isim = [recursive_level]
+            #solrDocument.component_level_isim = [recursive_level]
             solrDocument.child_component_count_isi = [inherited_data["child_component_count"]]
             if "parent_access_restrict" in inherited_data.keys():
                 solrDocument.parent_access_restrict_tesm = inherited_data["parent_access_restrict"]
@@ -157,11 +167,13 @@ class Arclight():
             new_parent_levels = copy.deepcopy(parent_levels)
             new_parent_levels.append(record.level)
 
-        solrDocument.repository_ssm = [record.repository] #this is wrong locally
-        solrDocument.repository_ssim = [record.repository]
-
-        solrDocument.level_ssm = [record.level.title()]
-        solrDocument.level_ssim = [record.level.title()]
+        # repository_ssm is empty in stock arclight for components, but I think its fine to set it
+        if self.repository_name:
+            solrDocument.repository_ssim = [self.repository_name]
+            solrDocument.repository_ssm = [self.repository_name]
+        else:
+            solrDocument.repository_ssm = [record.repository]
+            solrDocument.repository_ssim = [record.repository]
 
         extents = []
         for extent in record.extents:
@@ -194,7 +206,7 @@ class Arclight():
         solrDocument.creator_sort = creators
         for agent in record.agents:
             names.append(agent.name)
-            if name.agent_type in agent_translations.keys():
+            if agent.agent_type in agent_translations.keys():
                 setattr(solrDocument, agent_translations[agent.agent_type], [agent.name])
         solrDocument.names_ssim = names
         solrDocument.names_coll_ssim = names
@@ -243,17 +255,19 @@ class Arclight():
                 if note == "acqinfo":
                     setattr(solrDocument, note + "_ssim", note_text)
                 else:
-                    setattr(solrDocument, note + "_tesim", note_text)
+                    stripped_text = [BeautifulSoup(f"<html><body>{item}</body></html>", "html.parser").get_text() for item in note_text]
+                    setattr(solrDocument, note + "_tesim", stripped_text)
+                    setattr(solrDocument, note + "_html_tesm", note_text)
                     if getattr(record, note + "_heading", None):
                         setattr(solrDocument, note + "_heading_ssm", [getattr(record, note + "_heading", None)])
                     if note == "accessrestrict":
-                        inherited_data["parent_access_restrict"] = []
-                        inherited_data["parent_access_restrict"].extend(note_text)
+                        inherited_data.setdefault("parent_access_restrict", []).extend(stripped_text)
                     elif note == "userestrict":
-                        inherited_data["parent_access_terms"] = []
-                        inherited_data["parent_access_terms"].extend(note_text)
-                        solrDocument.access_terms_ssm = note_text
+                        inherited_data.setdefault("parent_access_terms", []).extend(stripped_text)
+                        # Dunno why it does this. ¯\_(ツ)_/¯
+                        solrDocument.access_terms_ssm = stripped_text
 
+        
         # Containers
         # This is a bit nuts, but it was just as much code as a function so I left it explicit
         containers_ssim = []
@@ -306,7 +320,7 @@ class Arclight():
         daos = []
         for digital_object in record.digital_objects:
             has_dao = True
-            dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.href + "\"}"
+            dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
             daos.append(str(dao))
         solrDocument.digital_objects_ssm = daos
         
@@ -317,9 +331,12 @@ class Arclight():
         # bump recursion level
         recursive_level += 1
 
+        order_counter = 0
         for component in record.components:
             inherited_data["child_component_count"] = len(component.components)
-            subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, inherited_data)
+            subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
+            order_counter += 1
+            subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)
 
         return solrDocument, has_online_content

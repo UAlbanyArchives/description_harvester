@@ -1,5 +1,8 @@
 import os
 import sys
+from lxml import etree
+from io import StringIO
+from typing import List
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
@@ -51,6 +54,31 @@ class ArchivesSpace():
     @property
     def dao_system_map(self):
         return DaoSystem.registry
+
+
+    def extract_xpath_text(self, text: str) -> List[str]:
+        try:
+            # Parse the string as HTML content (allowing lenient parsing with 'recover=True')
+            parser = etree.HTMLParser(recover=True)
+            tree = etree.parse(StringIO(text), parser)
+
+            # Find all elements, excluding <html> and <body> tags
+            elements = tree.xpath("//*[not(self::html or self::body)]")
+
+            # Process elements and split text by newlines
+            cleaned_texts = [
+                line.strip()  # Strip any leading/trailing whitespace from each line
+                for e in elements
+                for line in etree.tostring(e, encoding="unicode", method="html").splitlines()  # Split into lines
+                if line.strip()  # Only include non-empty lines
+            ]
+
+            return cleaned_texts
+
+        except etree.XMLSyntaxError as e:
+            # Handle parsing errors by returning text split by newlines
+            print(f"Error parsing HTML: {e}")
+            return [line.strip() for line in text.splitlines() if line.strip()]  # Handle raw text splitting by lines
 
 
     def read(self, id):
@@ -151,20 +179,20 @@ class ArchivesSpace():
 
         for date in apiObject["dates"]:
             dateObj = Date()
-            dateObj.begin = date['begin']
-            if date['date_type'].lower() == "bulk":
-                dateObj.date_type = "bulk"
-            elif date['date_type'].lower() == "inclusive":
-                dateObj.date_type = "inclusive"
-            if "end" in date.keys():
-                dateObj.end = date['end']
-
             if "expression" in date.keys():
                 dateObj.expression = date['expression']
-            elif "end" in date.keys():
-                dateObj.expression = iso2DACS(date['begin']) + " - " + iso2DACS(date['end'])
-            else:
-                dateObj.expression = iso2DACS(date['begin'])
+            if "begin" in date.keys():
+                dateObj.begin = date['begin']
+                if date['date_type'].lower() == "bulk":
+                    dateObj.date_type = "bulk"
+                elif date['date_type'].lower() == "inclusive":
+                    dateObj.date_type = "inclusive"
+                if "end" in date.keys():
+                    dateObj.end = date['end']
+                elif "end" in date.keys():
+                    dateObj.expression = iso2DACS(date['begin']) + " - " + iso2DACS(date['end'])
+                else:
+                    dateObj.expression = iso2DACS(date['begin'])
             record.dates.append(dateObj)
         
         if apiObject["level"].lower() == "collection":
@@ -229,7 +257,7 @@ class ArchivesSpace():
                     for subnote in note["subnotes"]:
                         if subnote['publish'] == True:
                             if "content" in subnote.keys():
-                                note_text.append(subnote["content"])
+                                note_text.extend(self.extract_xpath_text(subnote["content"]))
                             elif subnote['jsonmodel_type'] == "note_chronology":
                                 events = []
                                 for event in subnote["items"]:
@@ -241,7 +269,7 @@ class ArchivesSpace():
                                 raise ValueError(subnote)
                     setattr(record, note["type"], note_text)
 
-        daos = []
+        has_representative_instance = any(instance.get("is_representative") for instance in apiObject["instances"] if instance.get("instance_type") == "digital_object")
         for instance in apiObject["instances"]:
             if "sub_container" in instance.keys():
                 container = Container()
@@ -260,24 +288,29 @@ class ArchivesSpace():
                     container.sub_container_indicator = instance['sub_container']['indicator_3']
                 record.containers.append(container)
             elif instance['instance_type'] == "digital_object":
+                # Skip this instance if another one is marked representative
+                if has_representative_instance and not instance.get("is_representative"):
+                    continue
+
                 digital_object = self.client.get(instance['digital_object']['ref']).json()
-                if digital_object['publish'] == True:
-                    if "file_versions" in digital_object.keys() and len(digital_object['file_versions']) > 0:
-                        # So ASpace DAOs can have multiple file versions for some reason so 
-                        # I guess I'm making a new dao for each with the same label?
-                        for file_version in digital_object['file_versions']:
-                            if "publish" in file_version.keys() and file_version != True:
-                                pass
-                            else:
-                                dao = DigitalObject()
-                                if instance["is_representative"] == True and file_version["is_representative"] == True:
-                                    dao.is_representative = "true"
+                if digital_object.get('publish', False):
+                    if "file_versions" in digital_object and len(digital_object["file_versions"]) > 0:
+                        has_representative_file = any(fv.get("is_representative") for fv in digital_object["file_versions"])
+
+                        for file_version in digital_object["file_versions"]:
+                            # Skip non-representative file versions if a representative exists
+                            if has_representative_file and not file_version.get("is_representative"):
+                                continue
+
+                            if file_version.get("publish", False):
                                 if "file_uri" in file_version.keys():
-                                    dao.href = file_version['file_uri']
-                                    dao.label = digital_object['title']
-                                    dao.identifier = digital_object['digital_object_id']
+                                    dao = DigitalObject()
+                                    dao.identifier = file_version["file_uri"]
+                                    dao.label = digital_object["title"]
+
                                     for dao_system in self.dao_systems:
                                         dao = dao_system.read_data(dao)
+
                                     record.digital_objects.append(dao)
 
         
