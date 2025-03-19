@@ -21,6 +21,7 @@ parser.add_argument('--repo', help="A repository slug used by ArcLight. This wil
 #parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
 
 def harvest():
+	start_time = time.time()
 	config = Config()
 	args = parser.parse_args()
 	#print (args)
@@ -51,7 +52,7 @@ def harvest():
 			records = aspace.read_since(time_since)
 			for record in records:
 				solrDoc = arclight.convert(record)
-				#arclight.post(solrDoc)
+				arclight.post(solrDoc)
 				print (f"Indexed {record.id}")
 		elif args.id:
 			for collection_id in args.id:
@@ -72,4 +73,7 @@ def harvest():
 		with open(Path.home() / ".description_harvester.yml", "w") as f:
 			yaml.dump(config.__dict__, f)
 		print (f"Stored last run time as: {endTimeHuman}")
-		
+	end_time = time.time()
+	duration = end_time - start_time
+	print(f"Execution time: {duration:.4f} seconds")
+	

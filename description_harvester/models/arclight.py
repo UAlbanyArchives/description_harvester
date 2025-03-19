@@ -13,6 +13,8 @@ class SolrCollection(models.Base):
     title_tesim = fields.ListField(str)
     title_filing_ssi = fields.StringField()
     ead_ssi = fields.ListField(str)
+    total_component_count_is = fields.IntField()
+    sort_isi = fields.IntField()
 
     # this is a list of display dates, i.e. ["1920-1988", "bulk 1956-1976"]
     unitdate_ssm = fields.ListField(str)
@@ -24,6 +26,7 @@ class SolrCollection(models.Base):
     #unitdate_inclusive_ssm = fields.ListField(str)
     #unitdate_other_ssim
 
+    component_level_isim = fields.ListField(int)
     level_ssm = fields.ListField(str)
     level_ssim = fields.ListField(str)
 
@@ -163,12 +166,10 @@ class SolrComponent(SolrCollection):
     parent_levels_ssm = fields.ListField(str)
     parent_unittitles_ssm = fields.ListField(str)
     parent_unittitles_tesim = fields.ListField(str)
-    component_level_isim = fields.ListField(int)
     #collection_creator_ssm = fields.ListField(str)
     child_component_count_isi = fields.ListField(int)
     parent_access_restrict_tesm = fields.ListField(str)
     parent_access_terms_tesm = fields.ListField(str)
     parent_levels_ssm = fields.ListField(str)
-    sort_isi = fields.IntField()
     ref_ssm = fields.ListField(str)
     ref_ssi = fields.StringField()

@@ -71,10 +71,9 @@ class Arclight():
 
         if record.level == "collection":
             solrDocument = SolrCollection()
+            solrDocument.ead_ssi = [record.collection_id]
         else:
             solrDocument = SolrComponent()
-
-        solrDocument.ead_ssi = [record.collection_id]
 
         solrDocument.level_ssm = [record.level.title().lower()]
         solrDocument.level_ssim = [record.level.title()]
@@ -111,12 +110,14 @@ class Arclight():
         solrDocument.title_filing_ssi = record.title_filing_ssi
 
         solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
+        solrDocument.component_level_isim = [recursive_level]
         #solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
         if record.level == "collection":
             solrDocument.id = record.id.replace(".", "-")
             solrDocument.unitid_ssm = [record.collection_id]
-            solrDocument.unitid_teim = [record.collection_id]
+            solrDocument.unitid_tesim = [record.collection_id]
             solrDocument.collection_ssim = solrDocument.normalized_title_ssm
+            solrDocument.sort_isi = 0
             inherited_data['collection_name'] = solrDocument.normalized_title_ssm
             col_creators = []
             for col_creator in record.creators:
@@ -137,6 +138,7 @@ class Arclight():
             solrDocument.collection_ssm = inherited_data['collection_name']
             solrDocument.collection_sim = inherited_data['collection_name']
             solrDocument.collection_ssi = inherited_data['collection_name']
+            solrDocument.collection_ssim = inherited_data['collection_name']
             #v1.4 doesn't appear to store this anymore
             #if "collection_creator" in inherited_data.keys():
             #    solrDocument.collection_creator_ssm = inherited_data['collection_creator']
@@ -151,7 +153,7 @@ class Arclight():
             solrDocument.parent_unittitles_ssm = parent_titles
             solrDocument.parent_unittitles_tesim = parent_titles
             solrDocument.parent_levels_ssm = parent_levels
-            solrDocument.component_level_isim = [recursive_level]
+            #solrDocument.component_level_isim = [recursive_level]
             solrDocument.child_component_count_isi = [inherited_data["child_component_count"]]
             if "parent_access_restrict" in inherited_data.keys():
                 solrDocument.parent_access_restrict_tesm = inherited_data["parent_access_restrict"]
@@ -165,6 +167,7 @@ class Arclight():
             new_parent_levels = copy.deepcopy(parent_levels)
             new_parent_levels.append(record.level)
 
+        # repository_ssm is empty in stock arclight for components, but I think its fine to set it
         if self.repository_name:
             solrDocument.repository_ssim = [self.repository_name]
             solrDocument.repository_ssm = [self.repository_name]
@@ -317,7 +320,7 @@ class Arclight():
         daos = []
         for digital_object in record.digital_objects:
             has_dao = True
-            dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.href + "\"}"
+            dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
             daos.append(str(dao))
         solrDocument.digital_objects_ssm = daos
         
