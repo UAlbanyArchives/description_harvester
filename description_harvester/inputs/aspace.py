@@ -25,13 +25,10 @@ class ArchivesSpace():
         """
 
         self.client = ASnakeClient()
-        self.client.authorize()
 
         self.repo = repository
 
         self.repo_name = self.client.get('repositories/' + str(self.repo)).json()['name']
-
-
 
         plugin_basedir = os.environ.get("DESCRIPTION_HARVESTER_PLUGIN_DIR", None)
         # Dao system plugins are loaded from:
@@ -107,8 +104,7 @@ class ArchivesSpace():
             print (f"Skipping unpublished resource {resource['id_0']}")
         else:
             eadid = resource["ead_id"]
-            tree = self.client.get(resource['tree']['ref']).json()
-            record = self.readToModel(resource, eadid, tree)
+            record = self.readToModel(resource, eadid, resource['uri'])
 
             return record
 
@@ -131,8 +127,7 @@ class ArchivesSpace():
         else:
             eadid = resource["ead_id"]
             
-            tree = self.client.get(resource['tree']['ref']).json()
-            record = self.readToModel(resource, eadid, tree)
+            record = self.readToModel(resource, eadid, resource['uri'])
             
             return record
     
@@ -150,7 +145,7 @@ class ArchivesSpace():
 
         return records
 
-    def readToModel(self, apiObject, eadid, tree, collection_name="", recursive_level=0):
+    def readToModel(self, apiObject, eadid, resource_uri, collection_name="", recursive_level=0):
         """
         A recursive function that initally takes a resource from the ASpace API and reads it to a model.
         Then calls itself on any child archival_object records
@@ -158,7 +153,7 @@ class ArchivesSpace():
         Parameters:
             apiObject (dict): a resource or archival object from the ASpace API as a JSON dict
             eadid (str): a collection's EADID as a string
-            tree (dict): an ASpace API Tree object for a collection
+            resource_uri (str): The uri to the apiObject's resource
             collection_name (str): The name of the collection as a string
             recursive_level (int): The level of recursion. Start at 0
 
@@ -319,10 +314,25 @@ class ArchivesSpace():
 
         
         recursive_level += 1
+        params = {"published_only": True}
+        batch_params = {"published_only": True}
+        if apiObject['jsonmodel_type'] == "resource":
+            tree = self.client.get(f"{resource_uri}/tree/root", params=params).json()
+            max_offset = tree['waypoints']
+        else:
+            params["node_uri"] = apiObject["uri"]
+            tree = self.client.get(f"{resource_uri}/tree/node", params=params).json()
+            max_offset = tree['waypoints']
+            batch_params["parent_node"] = apiObject["uri"]
 
-        for child in tree['children']:
-            component = self.client.get(child['record_uri']).json()            
-            subrecord = self.readToModel(component, eadid, child, collection_name, recursive_level)
-            record.components.append(subrecord)
+        for i in range(max_offset):
+            batch_params["offset"] = i
+            batch = self.client.get(f"{resource_uri}/tree/waypoint", params=batch_params).json()
+            for child in batch:
+                record_uri = child['uri']
+                component = self.client.get(record_uri).json()    
+
+                subrecord = self.readToModel(component, eadid, resource_uri, collection_name, recursive_level)
+                record.components.append(subrecord)
 
         return record
