@@ -181,6 +181,10 @@ class ArchivesSpace():
             dateObj = Date()
             if "expression" in date.keys():
                 dateObj.expression = date['expression']
+            elif "begin" in date.keys() and "end" in date.keys():
+                dateObj.expression = f"{iso2DACS(date['begin'])} - {iso2DACS(date['end'])}"
+            elif "begin" in date.keys():
+                dateObj.expression = iso2DACS(date['begin'])
             if "begin" in date.keys():
                 dateObj.begin = date['begin']
                 if date['date_type'].lower() == "bulk":
@@ -190,7 +194,7 @@ class ArchivesSpace():
                 if "end" in date.keys():
                     dateObj.end = date['end']
                 elif "end" in date.keys():
-                    dateObj.expression = iso2DACS(date['begin']) + " - " + iso2DACS(date['end'])
+                    dateObj.expression = f"{iso2DACS(date['begin'])} - {iso2DACS(date['end'])}"
                 else:
                     dateObj.expression = iso2DACS(date['begin'])
             record.dates.append(dateObj)
