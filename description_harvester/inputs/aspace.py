@@ -132,18 +132,26 @@ class ArchivesSpace():
             return record
     
     def read_since(self, last_run_time):
+        """
+        Reads a resource and its associated archival objects
+        Uses URL and login info from ~/.archivessnake.yml
+        
+        Parameters:
+            last_run_time (int): an integer representing POSIX time
 
-        records = []
+        Returns:
+            records_uris (list): a list of ASpace resource URIs updated since POSIX time
+        """
+        records_uris = []
         modifiedList = self.client.get(f'repositories/{str(self.repo)}/resources?all_ids=true&modified_since={str(last_run_time)}').json()
         if len(modifiedList) < 1:
             print ("No collections modified since last run.")
         else:
-            print (modifiedList)
+            #print (modifiedList)
             for collection_uri in modifiedList:
-                record = self.read_uri(int(collection_uri))
-                records.append(record)
+                records_uris.append(int(collection_uri))
 
-        return records
+        return records_uris
 
     def readToModel(self, apiObject, eadid, resource_uri, collection_name="", recursive_level=0):
         """

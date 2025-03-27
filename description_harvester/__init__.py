@@ -55,8 +55,9 @@ def harvest(args=None):
 				time_since = str(time.time() - 3600).split(".")[0]
 			elif args.today:
 				time_since = str(time.time() - 86400).split(".")[0]
-			records = aspace.read_since(time_since)
-			for record in records:
+			collection_uris = aspace.read_since(time_since)
+			for collection_uri in collection_uris:
+				record = aspace.read_uri(collection_uri)
 				solrDoc = arclight.convert(record)
 				arclight.post(solrDoc)
 				print (f"Indexed {record.id}")
