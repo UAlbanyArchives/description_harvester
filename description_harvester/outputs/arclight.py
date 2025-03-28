@@ -114,12 +114,15 @@ class Arclight():
         solrDocument.unitdate_ssm = dates
         solrDocument.normalized_date_ssm = [", ".join(string_dates)]
 
-        solrDocument.title_ssm = [record.title]
-        solrDocument.title_tesim = [record.title]
+        solrDocument.title_ssm = [record.title] if record.title else []
+        solrDocument.title_tesim = [record.title] if record.title else []
         # this this empty for components, which I think is fine. v1.4 just uses the title field
         solrDocument.title_filing_ssi = record.title_filing_ssi
 
-        solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
+        if record.title:
+            solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
+        else:
+            solrDocument.normalized_title_ssm = [solrDocument.normalized_date_ssm[0]]
         solrDocument.component_level_isim = [recursive_level]
         #solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
         if record.level == "collection":

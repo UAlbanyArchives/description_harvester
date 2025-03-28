@@ -43,7 +43,8 @@ class DigitalObject(models.Base):
 class Component(models.Base):
     id = fields.StringField(required=True)
     collection_id = fields.StringField(required=True)
-    title = fields.StringField(required=True)
+    # title should really be required as it is in DACS, but its not in ASpace/EAD or the existing ArcLight indexer.
+    title = fields.StringField()
     title_filing_ssi = fields.StringField()
     repository = fields.StringField(required=True)
     level = fields.StringField(required=True)

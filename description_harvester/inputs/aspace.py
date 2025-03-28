@@ -171,11 +171,12 @@ class ArchivesSpace():
 
         # Print the name of the object being read, correctly indented        
         indent = recursive_level*"\t"
-        print (f"{indent}Reading {apiObject['title']}...")
+        print (f"{indent}Reading {apiObject.get("title", None)}...")
         
         record = Component()
         
-        record.title = apiObject["title"]
+        #record.title = apiObject["title"]
+        record.title = apiObject.get("title", None)
         record.title_filing_ssi = apiObject.get("finding_aid_filing_title", None)
         record.repository = self.repo_name
         record.level = apiObject["level"]
