@@ -216,7 +216,7 @@ class Arclight():
                 names.append(creator.name)
         solrDocument.creator_ssm = creators
         solrDocument.creator_ssim = creators
-        solrDocument.creator_sort = creators
+        solrDocument.creator_sort = min(creators) if creators else ""
         for agent in record.agents:
             names.append(agent.name)
             if agent.agent_type in agent_translations.keys():

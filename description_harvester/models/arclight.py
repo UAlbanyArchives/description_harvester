@@ -132,7 +132,7 @@ class SolrCollection(models.Base):
     
     creator_ssm = fields.ListField(str)
     creator_ssim = fields.ListField(str)
-    creator_sort = fields.ListField(str)
+    creator_sort = fields.StringField()
     creator_corpname_ssim = fields.ListField(str)
     creator_famname_ssim = fields.ListField(str)
     creator_persname_ssim = fields.ListField(str)
