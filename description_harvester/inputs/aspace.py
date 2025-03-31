@@ -269,7 +269,9 @@ class ArchivesSpace():
                             elif subnote['jsonmodel_type'] == "note_chronology":
                                 events = []
                                 for event in subnote["items"]:
-                                    events.append(f"{event['event_date']}: {event['events']}")
+                                    event_date = event.get("event_date", "")
+                                    event_text = event.get("events", "")
+                                    events.append(f"{date}: {event_text}")
                                 note_text.append("\n".join(events))
                             elif subnote['jsonmodel_type'] == "note_orderedlist":
                                 note_text.append("\n".join(subnote['items']))
