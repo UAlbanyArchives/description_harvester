@@ -58,21 +58,24 @@ def harvest(args=None):
 			collection_uris = aspace.read_since(time_since)
 			for collection_uri in collection_uris:
 				record = aspace.read_uri(collection_uri)
-				solrDoc = arclight.convert(record)
-				arclight.post(solrDoc)
-				print (f"Indexed {record.id}")
+				if record:
+					solrDoc = arclight.convert(record)
+					arclight.post(solrDoc)
+					print (f"Indexed {record.id}")
 		elif args.id:
 			for collection_id in args.id:
 				record = aspace.read(collection_id)
-				solrDoc = arclight.convert(record)
-				arclight.post(solrDoc)
-				print (f"Indexed {collection_id}")
+				if record:
+					solrDoc = arclight.convert(record)
+					arclight.post(solrDoc)
+					print (f"Indexed {collection_id}")
 		elif args.uri:
 			for collection_uri in args.uri:
 				record = aspace.read_uri(collection_uri)
-				solrDoc = arclight.convert(record)
-				arclight.post(solrDoc)
-				print (f"Indexed {collection_uri}")
+				if record:
+					solrDoc = arclight.convert(record)
+					arclight.post(solrDoc)
+					print (f"Indexed {collection_uri}")
 
 		lastExportTime = time.time()
 		endTimeHuman = datetime.utcfromtimestamp(lastExportTime).strftime('%Y-%m-%d %H:%M:%S')
