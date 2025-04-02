@@ -71,11 +71,11 @@ def harvest(args=None):
 			for collection_id in collection_ids:
 				results = solr.search(f"id:{collection_id}", rows=1, **{"fl": "id"})
 				if results.hits > 0:
-				    print(f"Skipping {collection_id} as it already exists.")
+					print(f"Skipping {collection_id} as it already exists.")
 				else:
-				    record = aspace.read(collection_id)
-				    if record:
-				    	solrDoc = arclight.convert(record)
+					record = aspace.read(collection_id)
+					if record:
+						solrDoc = arclight.convert(record)
 						arclight.post(solrDoc)
 						print (f"Indexed {collection_id}")
 		elif args.id:
