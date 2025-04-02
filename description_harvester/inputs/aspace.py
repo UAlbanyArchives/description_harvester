@@ -269,10 +269,19 @@ class ArchivesSpace():
         # Notes
         for note in apiObject["notes"]:
             if note['publish'] == True:
-                if "label" in note.keys():
+                if "label" in note.keys() and "type" in note.keys():
                     setattr(record, note["type"] + "_heading", note["label"])
                 if note["jsonmodel_type"] == "note_singlepart":
                     setattr(record, note["type"], note["content"])
+                elif note["jsonmodel_type"] == "note_bibliography":
+                    if getattr(record, "bibliography_heading", None):
+                        record.bibliography_heading += f"; {note['label']}"
+                    else:
+                        setattr(record, "bibliography_heading", note["label"])
+                    if getattr(record, "bibliography", None):
+                        record.bibliography.extend(note["items"])
+                    else:
+                        setattr(record, "bibliography", note["items"])
                 else:
                     note_text = []
                     for subnote in note["subnotes"]:
