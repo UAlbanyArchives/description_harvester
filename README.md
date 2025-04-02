@@ -49,7 +49,9 @@ Index collections modified in the past hour: `harvest --hour`
 
 Index collections modified in the past day: `harvest --today`
 
-Index collections modified since las run: `harvest --new`
+Index collections modified since las run: `harvest --updated`
+
+Index collections not already in the index: `harvest --new`
 
 #### Deleting collections
 

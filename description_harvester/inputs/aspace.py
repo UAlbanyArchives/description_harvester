@@ -148,11 +148,23 @@ class ArchivesSpace():
         if len(modifiedList) < 1:
             print ("No collections modified since last run.")
         else:
-            #print (modifiedList)
             for collection_uri in modifiedList:
                 records_uris.append(int(collection_uri))
 
         return records_uris
+
+    def all_resource_ids(self):
+        print ("Requesting full list of collection IDs...")
+        records_ids = []
+        fullList = self.client.get(f'repositories/{str(self.repo)}/resources?all_ids=true').json()
+        if len(fullList) < 1:
+            print ("No collections present.")
+        else:
+            for collection_uri in fullList:
+                resource = self.client.get(f"repositories/{str(self.repo)}/resources/{collection_uri}").json()
+                records_ids.append(resource["id_0"])
+
+        return records_ids
 
     def readToModel(self, apiObject, eadid, resource_uri, collection_name="", recursive_level=0):
         """

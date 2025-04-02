@@ -1,6 +1,8 @@
-#Functions to make DACS dates from timestamps and ISO dates
 import re
+import json
+from pathlib import Path
 
+#Functions to make DACS dates from timestamps and ISO dates
 def stamp2DACS(timestamp):
 	calendar = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}
 	stamp = timestamp[:8]
@@ -56,3 +58,13 @@ def extract_years(date_string):
 
     # Return the sorted list of unique years
     return sorted(years)
+
+def write2disk(object, collection_id):
+	# takes a jsonmodel object and writes it to disk for testing
+
+	test_path = Path.home() / "description_harvester"
+	test_path.mkdir(parents=True, exist_ok=True)
+	out_path = test_path / f"{collection_id}.json"
+
+	with open(out_path, "w") as file:
+		json.dump(object.to_struct(), file, indent=4)

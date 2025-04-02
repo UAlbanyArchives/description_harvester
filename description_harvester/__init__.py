@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from .configurator import Config
+from .utils import write2disk
 from description_harvester.outputs.arclight import Arclight
 from description_harvester.inputs.aspace import ArchivesSpace
 
@@ -14,7 +15,8 @@ def harvest(args=None):
 	parser.add_argument('--id', nargs="+", help='One or more ASpace id_0s to index.')
 	parser.add_argument('--uri', nargs="+", help='One or more ASpace collection uri integers to index, such as 755 for /resources/755.')
 	parser.add_argument('--delete', default=False, action="store_true", help='an integer for the accumulator')
-	parser.add_argument('--new', default=False, action="store_true", help='Index collections modified since last run.')
+	parser.add_argument('--updated', default=False, action="store_true", help='Index collections modified since last run.')
+	parser.add_argument('--new', default=False, action="store_true", help='Index collections not already present in the index.')
 	parser.add_argument('--hour', default=False, action="store_true", help='Index collections modified in the last hour.')
 	parser.add_argument('--today', default=False, action="store_true", help='Index collections modified in the last 24 hours.')
 	parser.add_argument('--solr_url', nargs=1, help='A solr URL, such as http://127.0.0.1:8983/solr, to override ~/.description_harvester.yml')
@@ -32,7 +34,7 @@ def harvest(args=None):
 	
 	#print (args)
 	if not (args.id or args.new or args.uri or args.hour or args.today):
-		parser.error('No action requested, need a collection ID or --new')
+		parser.error('No action requested, need a collection ID or --updated or --new')
 	
 	if args.delete:
 		solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, always_commit=True)
@@ -48,8 +50,8 @@ def harvest(args=None):
 
 		arclight = Arclight(config.solr_url + "/" + config.solr_core, repository_name)
 		aspace = ArchivesSpace()
-		if args.new or args.hour or args.today:
-			if args.new:
+		if args.updated or args.hour or args.today:
+			if args.updated:
 				time_since = config.last_query	
 			elif args.hour:
 				time_since = str(time.time() - 3600).split(".")[0]
@@ -62,10 +64,25 @@ def harvest(args=None):
 					solrDoc = arclight.convert(record)
 					arclight.post(solrDoc)
 					print (f"Indexed {record.id}")
+		elif args.new:
+			collection_ids = aspace.all_resource_ids()
+			solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, always_commit=True)
+			solr.ping()
+			for collection_id in collection_ids:
+				results = solr.search(f"id:{collection_id}", rows=1, **{"fl": "id"})
+				if results.hits > 0:
+				    print(f"Skipping {collection_id} as it already exists.")
+				else:
+				    record = aspace.read(collection_id)
+				    if record:
+				    	solrDoc = arclight.convert(record)
+						arclight.post(solrDoc)
+						print (f"Indexed {collection_id}")
 		elif args.id:
 			for collection_id in args.id:
 				record = aspace.read(collection_id)
 				if record:
+					#write2disk(record, collection_id)
 					solrDoc = arclight.convert(record)
 					arclight.post(solrDoc)
 					print (f"Indexed {collection_id}")
