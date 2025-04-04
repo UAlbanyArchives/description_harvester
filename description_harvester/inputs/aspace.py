@@ -34,6 +34,8 @@ class ArchivesSpace():
         else:
             raise Exception(f"Failed to fetch repository {self.repo} data from ArchivesSpace. Status code: {repo_response.status_code}")
 
+        self.current_id_0 = ""
+
         plugin_basedir = os.environ.get("DESCRIPTION_HARVESTER_PLUGIN_DIR", None)
         # Plugins are loaded from:
         #   1. plugins directory inside the package (built-in)
@@ -139,6 +141,7 @@ class ArchivesSpace():
                     if repo_name:
                         self.repo_name = repo_name
 
+                self.current_id_0 = eadid
                 record = self.readToModel(resource, eadid, resource['uri'])
 
                 return record
@@ -169,6 +172,7 @@ class ArchivesSpace():
                 if repo_name:
                     self.repo_name = repo_name
             
+            self.current_id_0 = eadid
             record = self.readToModel(resource, eadid, resource['uri'])
             
             return record
@@ -387,10 +391,12 @@ class ArchivesSpace():
                                     dao.label = digital_object["title"]
 
                                     for plugin in self.plugins:
+                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
                                         updated_dao = plugin.read_data(dao)
                                         if updated_dao:
-                                            dao = plugin.read_data(dao)
+                                            dao = updated_dao
 
+                                    
                                     record.digital_objects.append(dao)
 
         
