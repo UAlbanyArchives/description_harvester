@@ -173,69 +173,90 @@ class MyPlugin(Plugin):
 			# Fetch the manifest
 			response = requests.get(dao.identifier)
 			if response.status_code != 200:
-				raise ValueError(f"Failed to fetch manifest: {response.status_code}")
+				print (f"Failed to fetch manifest: {response.status_code}")
+				#raise ValueError(f"Failed to fetch manifest: {response.status_code}")
+			else:
 
-			# Parse the manifest
-			manifest = response.json()
-			context = manifest.get("@context", "")
-			if isinstance(context, list):
-				context = context[0]
+				# Parse the manifest
+				manifest = response.json()
+				context = manifest.get("@context", "")
+				if isinstance(context, list):
+					context = context[0]
 
-			# Determine IIIF version (V3 or V2)
-			is_v3 = "presentation/3" in context
-			is_v2 = "presentation/2" in context or "@type" in manifest and manifest["@type"] == "sc:Manifest"
+				# Determine IIIF version (V3 or V2)
+				is_v3 = "presentation/3" in context
+				is_v2 = "presentation/2" in context or "@type" in manifest and manifest["@type"] == "sc:Manifest"
 
-			# Handle V3 Manifest
-			if is_v3:
-				dao.type = 'application/ld+json;profile="http://iiif.io/api/presentation/3/context.json"'
-				canvases = manifest.get("items", [])
-				if canvases:
-					canvas = canvases[0]
-					thumbs = canvas.get("thumbnail", [])
-					if isinstance(thumbs, list) and thumbs:
-						dao.thumbnail_href = thumbs[0].get("id") or thumbs[0].get("@id")
-
-				# Check for manifest-level renderings first, then canvas annotations if needed
-				dao.text_content = self.check_renderings(manifest.get("rendering", []))
-				if not dao.text_content:
-					dao.text_content = self._extract_text_from_canvas(canvases)
-
-				# Set rights metadata
-				dao.rights_statement = manifest.get("rights")
-
-				# Add metadata to dao
-				for entry in manifest.get("metadata", []):
-					label = self.extract_lang_value(entry.get("label", ""))
-					value = self.extract_lang_value(entry.get("value", ""))
-					dao.metadata[label] = value
-
-			# Handle V2 Manifest
-			elif is_v2:
-				dao.type = 'application/ld+json;profile="http://iiif.io/api/presentation/2/context.json"'
-				sequences = manifest.get("sequences", [])
-				if sequences:
-					canvases = sequences[0].get("canvases", [])
+				# Handle V3 Manifest
+				if is_v3:
+					dao.type = 'application/ld+json;profile="http://iiif.io/api/presentation/3/context.json"'
+					canvases = manifest.get("items", [])
 					if canvases:
 						canvas = canvases[0]
-						thumbs = canvas.get("thumbnail")
-						if isinstance(thumbs, dict):
-							dao.thumbnail_href = thumbs.get("@id")
-						elif isinstance(thumbs, str):
-							dao.thumbnail_href = thumbs
+						thumbs = canvas.get("thumbnail", [])
+						if isinstance(thumbs, list) and thumbs:
+							dao.thumbnail_href = thumbs[0].get("id") or thumbs[0].get("@id")
 
-						# Check for manifest-level renderings first, then canvas annotations if needed
-						dao.text_content = self.check_renderings(manifest.get("rendering", []))
-						if not dao.text_content:
-							dao.text_content = self._extract_text_from_canvas(canvases)
+					# Check for manifest-level renderings first, then canvas annotations if needed
+					dao.text_content = self.check_renderings(manifest.get("rendering", []))
+					if not dao.text_content:
+						dao.text_content = self._extract_text_from_canvas(canvases)
 
-				# Set rights metadata for V2 manifest
-				dao.rights_statement = manifest.get("license") or manifest.get("rights")
+					# Set rights metadata
+					dao.rights_statement = manifest.get("rights")
 
-				# Add metadata to dao
-				for entry in manifest.get("metadata", []):
-					label = entry.get("label", "")
-					value = entry.get("value", "")
-					dao.metadata[label] = value
+					# Add metadata to dao
+					for entry in manifest.get("metadata", []):
+						label = self.extract_lang_value(entry.get("label", ""))
+						value = self.extract_lang_value(entry.get("value", ""))
+
+						if label.lower() == "subjects":
+							if isinstance(value, str):
+								dao.subjects = [value]
+							elif isinstance(value, list):
+								dao.subjects = value
+							else:
+								dao.subjects = [str(value)]
+						else:
+							dao.metadata[label] = value
+
+				# Handle V2 Manifest
+				elif is_v2:
+					dao.type = 'application/ld+json;profile="http://iiif.io/api/presentation/2/context.json"'
+					sequences = manifest.get("sequences", [])
+					if sequences:
+						canvases = sequences[0].get("canvases", [])
+						if canvases:
+							canvas = canvases[0]
+							thumbs = canvas.get("thumbnail")
+							if isinstance(thumbs, dict):
+								dao.thumbnail_href = thumbs.get("@id")
+							elif isinstance(thumbs, str):
+								dao.thumbnail_href = thumbs
+
+							# Check for manifest-level renderings first, then canvas annotations if needed
+							dao.text_content = self.check_renderings(manifest.get("rendering", []))
+							if not dao.text_content:
+								dao.text_content = self._extract_text_from_canvas(canvases)
+
+					# Set rights metadata for V2 manifest
+					dao.rights_statement = manifest.get("license") or manifest.get("rights")
+
+					# Add metadata to dao (v2)
+					for entry in manifest.get("metadata", []):
+						label = entry.get("label", "")
+						value = entry.get("value", "")
+
+						if label.lower() == "subjects":
+							if isinstance(value, str):
+								dao.subjects = [value]
+							elif isinstance(value, list):
+								dao.subjects = value
+							else:
+								dao.subjects = [str(value)]
+						else:
+							dao.metadata[label] = value
+
 
 		# Return the updated dao object
 		return dao

@@ -146,17 +146,20 @@ class SolrCollection(models.Base):
     digital_objects_ssm = fields.ListField(str)
     components = fields.ListField()
 
-    # I guess collections can have representative DAOs
-    href_sim = fields.StringField()
-    label_ssm = fields.StringField()
-    identifier_sim = fields.StringField()
-    is_representative_sim = fields.StringField()
-    filename_sim = fields.StringField()
-    mime_type_sim = fields.StringField()
-    #metadata = fields.ListField(dict)
-    thumbnail_href_sim = fields.StringField()
-    rights_statement_ssm = fields.StringField()
-    #content_ssm = fields.StringField()
+    # From DAO records
+    dado_identifier_ssm = fields.StringField()
+    dado_label_tesim = fields.ListField(str)
+    dado_thumbnail_href_ssm = fields.StringField()
+    dado_type_ssm = fields.StringField()
+    dado_action_ssm = fields.StringField()
+    dado_legacy_id_ssim = fields.ListField(str)
+    dado_resource_type_ssim = fields.ListField(str)
+    dado_coverage_ssim = fields.StringField()
+    dado_preservation_package_ssim = fields.ListField(str)
+    dado_subjects_ssim = fields.ListField(str)
+    dado_rights_statement_ssim = fields.ListField(str)
+    dado_date_published_ssm = fields.StringField()
+    content_tesim = fields.StringField()
     
 
 class SolrComponent(SolrCollection):

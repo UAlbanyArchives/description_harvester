@@ -338,6 +338,8 @@ class Arclight():
         daos = []
         for digital_object in record.digital_objects:
             has_dao = True
+            solrDocument.dado_thumbnail_href_ssm = digital_object.thumbnail_href
+            solrDocument.content_tesim = digital_object.text_content
             dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
             daos.append(str(dao))
         solrDocument.digital_objects_ssm = daos
