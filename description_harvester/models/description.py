@@ -33,9 +33,9 @@ class Container(models.Base):
 class DigitalObject(models.Base):
     identifier = fields.StringField(required=True)
     label = fields.StringField()
-    #action = fields.StringField(required=True)
-    #type = fields.StringField(required=True)
-    #access_condition = fields.StringField(required=True)
+    action = fields.StringField()
+    type = fields.StringField()
+    access_condition = fields.StringField()
     thumbnail_href = fields.StringField()
     rights_statement = fields.StringField()
     metadata = fields.ListField(dict)

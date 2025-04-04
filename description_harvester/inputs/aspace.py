@@ -386,8 +386,10 @@ class ArchivesSpace():
                                     dao.identifier = file_version["file_uri"]
                                     dao.label = digital_object["title"]
 
-                                    #for plugin in self.plugins:
-                                    #    dao = plugin.read_data(dao)
+                                    for plugin in self.plugins:
+                                        updated_dao = plugin.read_data(dao)
+                                        if updated_dao:
+                                            dao = plugin.read_data(dao)
 
                                     record.digital_objects.append(dao)
 

@@ -23,6 +23,14 @@ solr_core: blacklight-core
 last_query: 0
 ```
 
+### Repositories
+
+By default, when reading from ArchivesSpace, description harvester will use the repository name stored there.
+
+To enable the --repo argument, place a copy of your ArcLight repositories.yml file in ~. You can then use `harvest --id mss001 --repo slug` to index using the slug from repositories.yml. This will overrite the ArchivesSpace repository name.
+
+There is also the option do customize this with a plugin.
+
 ## Indexing from ArchivesSpace API to Arclight
 
 Once description_harvester is set up, you can index from the ASpace API to Arclight using the `to-arclight` command.
