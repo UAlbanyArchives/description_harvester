@@ -73,7 +73,7 @@ def harvest(args=None):
 			solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, always_commit=True)
 			solr.ping()
 			for collection_id in collection_ids:
-				results = solr.search(f"id:{collection_id.replace(".", "-")}", rows=1, **{"fl": "id"})
+				results = solr.search(f"id:{collection_id.replace('.', '-')}", rows=1, **{"fl": "id"})
 				if results.hits > 0:
 					print(f"Skipping {collection_id} as it already exists.")
 				else:
