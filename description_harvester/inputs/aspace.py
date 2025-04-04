@@ -1,21 +1,23 @@
 import os
 import sys
 from lxml import etree
+from typing import List
 from io import StringIO
 from typing import List
+from pathlib import Path
 from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
 from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
 from description_harvester.utils import iso2DACS
-from description_harvester.dao_plugins import DaoSystem, import_dao_plugins
+from description_harvester.plugins import Plugin, import_plugins
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
 
 class ArchivesSpace():
     """This class connects to an ArchivesSpace repository"""
 
-    def __init__(self, repository=2):
+    def __init__(self, repository_id=2):
         """
         Connects to an ASpace repo using ArchivesSnake.
         Uses URL and login info from ~/.archivessnake.yml
@@ -25,57 +27,79 @@ class ArchivesSpace():
         """
 
         self.client = ASnakeClient()
-
-        self.repo = repository
-
-        self.repo_name = self.client.get('repositories/' + str(self.repo)).json()['name']
+        self.repo = repository_id
+        repo_response = self.client.get('repositories/' + str(self.repo))
+        if repo_response.status_code == 200:
+            self.repo_name = repo_response.json().get('name', 'Unknown')
+        else:
+            raise Exception(f"Failed to fetch repository {self.repo} data from ArchivesSpace. Status code: {repo_response.status_code}")
 
         plugin_basedir = os.environ.get("DESCRIPTION_HARVESTER_PLUGIN_DIR", None)
-        # Dao system plugins are loaded from:
-        #   1. dao_plugins directory inside the package (built-in)
-        #   2. .description_harvester/dao_plugins in user home directory
-        #   3. dao_plugins subdirectories in plugin dir set in environment variable
+        # Plugins are loaded from:
+        #   1. plugins directory inside the package (built-in)
+        #   2. .description_harvester in user home directory
+        #   3. plugins subdirectories in plugin dir set in environment variable
         plugin_dirs = []
-        for dirs in plugin_dirs:
-            dirs.append(Path(f"~/.description_harvester/dao_plugins").expanduser())
-            if plugin_basedir:
-                dirs.append((Path(plugin_basedir) / dao_plugins).expanduser())
-        import_dao_plugins(plugin_dirs)
+        plugin_dirs.append(Path(f"~/.description_harvester").expanduser())
+        if plugin_basedir:
+            plugin_dirs.append((Path(plugin_basedir)).expanduser())
+        import_plugins(plugin_dirs)
 
-        # Instantiate DAO systems
-        self.dao_systems = []
-        for system in self.dao_system_map.keys():
-            dao_system: DaoSystem = self.dao_system_map[system]
-            self.dao_systems.append(dao_system)
+        # Instantiate plugins
+        self.plugins = []
+        for plugin_cls in Plugin.registry.values():
+            plugin_instance = plugin_cls()  # this will call __init__()
+            self.plugins.append(plugin_instance)
 
     @property
-    def dao_system_map(self):
-        return DaoSystem.registry
+    def plugin_map(self):
+        return Plugin.registry
 
 
     def extract_xpath_text(self, text: str) -> List[str]:
+        """
+        Extracts textual content from an HTML string while omitting <html> and <body> tags.
+        
+        This function:
+        - Parses the input string as HTML using lxml with error recovery.
+        - Extracts all elements except <html> and <body>.
+        - Retrieves their textual content, preserving line breaks.
+        - Strips leading and trailing whitespace from each line.
+        - Ensures that empty lines are not included in the output.
+
+        Args:
+            text (str): A string containing HTML content.
+
+        Returns:
+            List[str]: A list of cleaned text lines extracted from the HTML.
+        
+        If an XML parsing error occurs, the function falls back to splitting the raw input 
+        text by newlines and removing empty lines.
+        """
+
         try:
-            # Parse the string as HTML content (allowing lenient parsing with 'recover=True')
+            # Parse the HTML content with a lenient parser (recover=True handles broken HTML)
             parser = etree.HTMLParser(recover=True)
             tree = etree.parse(StringIO(text), parser)
 
-            # Find all elements, excluding <html> and <body> tags
+            # Extract all elements except <html> and <body>
             elements = tree.xpath("//*[not(self::html or self::body)]")
 
-            # Process elements and split text by newlines
+            # Extract text content while preserving line breaks and removing empty items
             cleaned_texts = [
-                line.strip()  # Strip any leading/trailing whitespace from each line
+                line.strip()  # Remove leading/trailing spaces
                 for e in elements
-                for line in etree.tostring(e, encoding="unicode", method="html").splitlines()  # Split into lines
-                if line.strip()  # Only include non-empty lines
+                for line in etree.tostring(e, encoding="unicode", method="html").splitlines()  # Split by lines
+                if line.strip()  # Ignore empty lines
             ]
 
-            return cleaned_texts
+            # Ensure we filter out any lingering empty strings
+            return [line for line in cleaned_texts if line]
 
         except etree.XMLSyntaxError as e:
-            # Handle parsing errors by returning text split by newlines
+            # Handle cases where the input is not well-formed HTML
             print(f"Error parsing HTML: {e}")
-            return [line.strip() for line in text.splitlines() if line.strip()]  # Handle raw text splitting by lines
+            return [line.strip() for line in text.splitlines() if line.strip()]
 
 
     def read(self, id):
@@ -94,19 +118,30 @@ class ArchivesSpace():
         # for single id_0
         if isinstance(id, list):
             resources = self.client.get(f'repositories/{str(self.repo)}/find_by_id/resources?identifier[]={id}')
-            resource = self.client.get(resources.json()['resources'][0]['ref']).json()
         # for multiple id_0, id_1, etc.
         else:
             resources = self.client.get(f'repositories/{str(self.repo)}/find_by_id/resources?identifier[]=["{id}"]')
-            resource = self.client.get(resources.json()['resources'][0]['ref']).json()
+        if len(resources.json()['resources']) != 1:
+            raise Exception(f"ERROR: Found {len(resources.json()['resources'])} matching repositories in ArchivesSpace.")
+        resource = self.client.get(resources.json()['resources'][0]['ref']).json()
 
         if resource["publish"] != True:
             print (f"Skipping unpublished resource {resource['id_0']}")
         else:
-            eadid = resource["ead_id"]
-            record = self.readToModel(resource, eadid, resource['uri'])
+            if not "ead_id" in resource.keys() or len(resource["ead_id"]) < 1:
+                print (f"ERROR: not EAD ID for {resource['id_0']}.")
+            else:
+                eadid = resource["ead_id"]
 
-            return record
+                # Allow plugin overrides for repository names
+                for plugin in self.plugins:
+                    repo_name = plugin.custom_repository(resource)
+                    if repo_name:
+                        self.repo_name = repo_name
+
+                record = self.readToModel(resource, eadid, resource['uri'])
+
+                return record
 
     def read_uri(self, uri):
         """
@@ -127,6 +162,12 @@ class ArchivesSpace():
             return None
         else:
             eadid = resource["ead_id"]
+
+            # Allow plugin overrides for repository names
+            for plugin in self.plugins:
+                repo_name = plugin.custom_repository(resource)
+                if repo_name:
+                    self.repo_name = repo_name
             
             record = self.readToModel(resource, eadid, resource['uri'])
             
@@ -191,8 +232,8 @@ class ArchivesSpace():
         #record.title = apiObject["title"]
         record.title = apiObject.get("title", None)
         record.title_filing_ssi = apiObject.get("finding_aid_filing_title", None)
-        record.repository = self.repo_name
         record.level = apiObject["level"]
+        record.repository = self.repo_name
 
         for date in apiObject["dates"]:
             dateObj = Date()
@@ -226,6 +267,11 @@ class ArchivesSpace():
             record.id = "aspace_" + apiObject["ref_id"]
             record.collection_id = eadid
             record.collection_name = collection_name
+
+        # Set repository. Can be overridden by plugin.
+        #record.repository = self.repo_name
+        #for plugin in self.plugins:
+        #    record.repository = plugin.custom_repository(record)
 
         # read extents
         for extent in apiObject["extents"]:
@@ -340,8 +386,8 @@ class ArchivesSpace():
                                     dao.identifier = file_version["file_uri"]
                                     dao.label = digital_object["title"]
 
-                                    for dao_system in self.dao_systems:
-                                        dao = dao_system.read_data(dao)
+                                    #for plugin in self.plugins:
+                                    #    dao = plugin.read_data(dao)
 
                                     record.digital_objects.append(dao)
 

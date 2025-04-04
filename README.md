@@ -7,7 +7,7 @@ The [main branch](https://github.com/UAlbanyArchives/description_harvester) is d
 
 This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs better error handling. Validation is also very minimal, but there is potential to add detailed validation with `jsonschema `.
 
-### Installation
+## Installation
 
 ```python
 pip install description_harvester
@@ -23,11 +23,11 @@ solr_core: blacklight-core
 last_query: 0
 ```
 
-### Indexing from ArchivesSpace API to Arclight
+## Indexing from ArchivesSpace API to Arclight
 
 Once description_harvester is set up, you can index from the ASpace API to Arclight using the `to-arclight` command.
 
-#### Index by id_0
+### Index by id_0
 
 You can provide one or more IDs to index using a resource's id_0` field
 
@@ -35,7 +35,7 @@ You can provide one or more IDs to index using a resource's id_0` field
 
 `harvest --id mss123 apap106`
 
-#### Index by URI
+### Index by URI
 
 You can also use integers from ASpace URIs for resource, such as 263 for `https://my.aspace.edu/resources/263`
 
@@ -43,7 +43,7 @@ You can also use integers from ASpace URIs for resource, such as 263 for `https:
 
 `harvest --uri 1 755`
 
-#### Indexing by modified time
+### Indexing by modified time
 
 Index collections modified in the past hour: `harvest --hour`
 
@@ -53,13 +53,27 @@ Index collections modified since las run: `harvest --updated`
 
 Index collections not already in the index: `harvest --new`
 
-#### Deleting collections
+### Deleting collections
 
-You can delete one or more collections using the `--delete` argument in addition to`--id`. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
+You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
 
-`harvest --id apap101 apap301 --delete`
+`harvest --delete apap101 apap301`
 
-#### Use as a library
+## Plugins
+
+Local implementations may have to override some description_harvester logic. Indexing digital objects from local systems may be a common use case.
+
+To create a plugin, create a plugin directory, either at `~/.description_harvester` or a path you pass with a `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable.
+
+Use the example [default.py](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/default.py) and make a copy in your plugin directory.
+
+Use `custom_repository()` to customize how repository names are set. This has access to an [ArchivesSpace resource API object](https://archivesspace.github.io/archivesspace/api/#get-a-resource).
+
+Use `read_data()` to customize [DigitalObject objects](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py).
+
+The plugin importer will first import plugins from within the package, second it will look in `~/.description_harvester`, and finally it will look in the `DESCRIPTION_HARVESTER_PLUGIN_DIR` path. 
+
+## Use as a library
 
 You can also use description harvester in a script
 
@@ -68,3 +82,5 @@ from description_harvester import harvest
 
 harvest(["--id", "myid001"])
 ```
+
+

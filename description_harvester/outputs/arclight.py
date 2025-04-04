@@ -168,10 +168,11 @@ class Arclight():
             solrDocument.parent_levels_ssm = parent_levels
             #solrDocument.component_level_isim = [recursive_level]
             solrDocument.child_component_count_isi = [inherited_data["child_component_count"]]
+            # for access notes, inherit the note from the most closest parent component
             if "parent_access_restrict" in inherited_data.keys():
-                solrDocument.parent_access_restrict_tesm = inherited_data["parent_access_restrict"]
+                solrDocument.parent_access_restrict_tesm = [inherited_data["parent_access_restrict"][-1]]
             if "parent_access_terms" in inherited_data.keys():
-                solrDocument.parent_access_terms_tesm = inherited_data["parent_access_terms"]
+                solrDocument.parent_access_terms_tesm = [inherited_data["parent_access_terms"][-1]]
 
             new_parents = copy.deepcopy(parents)
             new_parents.append(record.id.replace(".", "-"))
@@ -274,9 +275,13 @@ class Arclight():
                     if getattr(record, note + "_heading", None):
                         setattr(solrDocument, note + "_heading_ssm", [getattr(record, note + "_heading", None)])
                     if note == "accessrestrict":
-                        inherited_data.setdefault("parent_access_restrict", []).extend(stripped_text)
+                        #inherited_data.setdefault("parent_access_restrict", []).extend(stripped_text)
+                        inherited_data["parent_access_restrict"] = inherited_data.get("parent_access_restrict", []).copy()
+                        inherited_data["parent_access_restrict"].extend(stripped_text)
                     elif note == "userestrict":
-                        inherited_data.setdefault("parent_access_terms", []).extend(stripped_text)
+                        #inherited_data.setdefault("parent_access_terms", []).extend(stripped_text)
+                        inherited_data["parent_access_terms"] = inherited_data.get("parent_access_terms", []).copy()
+                        inherited_data["parent_access_terms"].extend(stripped_text)
                         # Dunno why it does this. ¯\_(ツ)_/¯
                         solrDocument.access_terms_ssm = stripped_text
 
