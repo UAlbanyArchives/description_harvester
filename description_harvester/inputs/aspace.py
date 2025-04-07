@@ -159,7 +159,7 @@ class ArchivesSpace():
         resource = self.client.get(f'repositories/{str(self.repo)}/resources/{str(uri)}').json()
         
         if resource["publish"] != True:
-            print (f"{resource['id_0']}: {resource['title']} is an Unpublished record")
+            print (f"\n{resource['id_0']}: {resource['title']} is an Unpublished record")
             return None
         else:
             eadid = resource["ead_id"]
