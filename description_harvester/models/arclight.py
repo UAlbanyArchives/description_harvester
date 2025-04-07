@@ -159,7 +159,7 @@ class SolrCollection(models.Base):
     dado_subjects_ssim = fields.ListField(str)
     dado_rights_statement_ssim = fields.ListField(str)
     dado_date_published_ssm = fields.StringField()
-    content_tesim = fields.StringField()
+    content_teim = fields.StringField()
     
 
 class SolrComponent(SolrCollection):
