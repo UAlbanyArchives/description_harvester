@@ -17,7 +17,7 @@ logging.setup_logging(stream=sys.stdout, level='INFO')
 class ArchivesSpace():
     """This class connects to an ArchivesSpace repository"""
 
-    def __init__(self, repository_id=2):
+    def __init__(self, repository_id=2, verbose=False):
         """
         Connects to an ASpace repo using ArchivesSnake.
         Uses URL and login info from ~/.archivessnake.yml
@@ -28,6 +28,7 @@ class ArchivesSpace():
 
         self.client = ASnakeClient()
         self.repo = repository_id
+        self.verbose = verbose
         repo_response = self.client.get('repositories/' + str(self.repo))
         if repo_response.status_code == 200:
             self.repo_name = repo_response.json().get('name', 'Unknown')
@@ -224,8 +225,11 @@ class ArchivesSpace():
         """
 
         # Print the name of the object being read, correctly indented        
-        indent = recursive_level*"\t"
-        print (f"{indent}Reading {apiObject.get('title', None)}...")
+        indent = (recursive_level + 1) * "\t"
+        if recursive_level == 0:
+            print (f"{indent}Reading {apiObject.get('title', None)} ({eadid})...")
+        elif self.verbose:
+            print (f"{indent}Reading {apiObject.get('title', None)}...")
         
         record = Component()
         
