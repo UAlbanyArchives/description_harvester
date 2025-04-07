@@ -25,7 +25,7 @@ class Arclight():
 
         has_online_content = set()
 
-        print(f"converting to {record.id} to Solr documents...")
+        print(f"\tconverting to {record.id} to Solr documents...")
         solrDocument, has_online_content = self.convertCollection(record, has_online_content)
         
         if len(has_online_content) > 0:
@@ -107,7 +107,7 @@ class Arclight():
                     date_set = extract_years(date.expression)
                     date_list = list(range(min(date_set), max(date_set) + 1))
                 except:
-                    print (f"WARNING: Unable to extract year range for expression-only date {date.expression}. Date facet will not work for this component.")
+                    print (f"\tWARNING: Unable to extract year range for expression-only date {date.expression}. Date facet will not work for this component.")
 
         if len(date_set) > 0:
             solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
@@ -169,9 +169,9 @@ class Arclight():
             #solrDocument.component_level_isim = [recursive_level]
             solrDocument.child_component_count_isi = [inherited_data["child_component_count"]]
             # for access notes, inherit the note from the most closest parent component
-            if "parent_access_restrict" in inherited_data.keys():
+            if "parent_access_restrict" in inherited_data.keys() and len(inherited_data["parent_access_restrict"]) > 0:
                 solrDocument.parent_access_restrict_tesm = [inherited_data["parent_access_restrict"][-1]]
-            if "parent_access_terms" in inherited_data.keys():
+            if "parent_access_terms" in inherited_data.keys() and len(inherited_data["parent_access_terms"]) > 0:
                 solrDocument.parent_access_terms_tesm = [inherited_data["parent_access_terms"][-1]]
 
             new_parents = copy.deepcopy(parents)
@@ -363,5 +363,5 @@ class Arclight():
 
     def post(self, collection):
 
-        print ("POSTing data to Solr...")
+        print ("\tPOSTing data to Solr...")
         self.solr.add([collection.to_struct()])
