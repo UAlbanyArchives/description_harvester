@@ -26,12 +26,14 @@ class Arclight():
         has_online_content = set()
 
         print(f"\tconverting to {record.id} to Solr documents...")
-        solrDocument, has_online_content = self.convertCollection(record, has_online_content)
+        solrDocument, has_online_content, total_component_count = self.convertCollection(record, has_online_content)
+        solrDocument.total_component_count_is = int(total_component_count)
         
         if len(has_online_content) > 0:
             if solrDocument.id in has_online_content:
                 solrDocument.has_online_content_ssim = ["true"]
             solrDocument = self.mark_online_content(solrDocument, has_online_content)
+            solrDocument.online_item_count_is = int(len(has_online_content))
 
         return solrDocument
 
@@ -46,7 +48,7 @@ class Arclight():
 
 
 
-    def convertCollection(self, record, has_online_content, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
+    def convertCollection(self, record, has_online_content, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
         """
         A recursive function to convert collection and component objects to Arclight-friendly solr docs.
         It takes a component object and converts it and any child objects to an Arclight-friendly
@@ -55,6 +57,7 @@ class Arclight():
         Parameters:
             record (Component): a hierarchical component object containing all public-facing description for a collection
             has_online_content (set):
+            total_component_count(int): a running integer of the total components
             recursive_level (int): The level of recursion. Start at 0
             parents (list): A list of parent IDs as strings
             parent_titles (list): A list of parent names as strings
@@ -365,13 +368,14 @@ class Arclight():
 
         order_counter = 0
         for component in record.components:
+            total_component_count += 1
             inherited_data["child_component_count"] = len(component.components)
-            subcomponent, has_online_content = self.convertCollection(component, has_online_content, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
+            subcomponent, has_online_content, total_component_count = self.convertCollection(component, has_online_content, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
             order_counter += 1
             subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)
 
-        return solrDocument, has_online_content
+        return solrDocument, has_online_content, total_component_count
 
     def post(self, collection):
 
