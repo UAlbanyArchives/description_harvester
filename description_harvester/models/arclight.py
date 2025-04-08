@@ -149,17 +149,22 @@ class SolrCollection(models.Base):
     # From DAO records
     dado_identifier_ssm = fields.StringField()
     dado_label_tesim = fields.ListField(str)
-    dado_thumbnail_href_ssm = fields.StringField()
+    thumbnail_path_ss = fields.StringField()
     dado_type_ssm = fields.StringField()
     dado_action_ssm = fields.StringField()
-    dado_legacy_id_ssim = fields.ListField(str)
-    dado_resource_type_ssim = fields.ListField(str)
-    dado_coverage_ssim = fields.StringField()
-    dado_preservation_package_ssim = fields.ListField(str)
+    
     dado_subjects_ssim = fields.ListField(str)
     dado_rights_statement_ssim = fields.ListField(str)
     dado_date_published_ssm = fields.StringField()
     content_teim = fields.StringField()
+    # metadata fields
+    dado_legacy_id_ssim = fields.ListField(str)
+    dado_resource_type_ssim = fields.ListField(str)
+    dado_coverage_ssim = fields.ListField(str)
+    dado_preservation_package_ssim = fields.ListField(str)
+    dado_creator_ssim = fields.ListField(str)
+    dado_date_published_sim = fields.ListField(str)
+
     
 
 class SolrComponent(SolrCollection):

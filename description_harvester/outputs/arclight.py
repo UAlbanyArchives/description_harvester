@@ -338,11 +338,23 @@ class Arclight():
         daos = []
         for digital_object in record.digital_objects:
             has_dao = True
-            solrDocument.dado_thumbnail_href_ssm = digital_object.thumbnail_href
+            solrDocument.thumbnail_path_ss = digital_object.thumbnail_href
             solrDocument.content_teim = digital_object.text_content
+            for field, value in digital_object.metadata.items():
+                if value not in [None, ""]:
+                    if field == "date_published":
+                        field_name = f"dado_{field}_sim"
+                    else:
+                        field_name = f"dado_{field}_ssim"
+                    setattr(solrDocument, field_name, [value])
+
             dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
             daos.append(str(dao))
         solrDocument.digital_objects_ssm = daos
+        #prefix = "dado_"
+        #for attr in dir(solrDocument):
+        #    if attr.startswith(prefix):
+        #        print(f"{attr} = {getattr(solrDocument, attr)}")
         
         if has_dao:
             has_online_content.add(record.id.replace(".", "-"))
