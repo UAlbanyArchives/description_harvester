@@ -145,6 +145,8 @@ class SolrCollection(models.Base):
     containers_ssim = fields.ListField(str)
     digital_objects_ssm = fields.ListField(str)
     components = fields.ListField()
+    total_component_count_is = fields.IntField()
+    online_item_count_is = fields.IntField()
 
     # I guess collections can have representative DAOs
     href_sim = fields.StringField()
