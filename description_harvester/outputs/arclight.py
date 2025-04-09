@@ -7,18 +7,23 @@ from description_harvester.models.arclight import SolrCollection, SolrComponent
 class Arclight():
 
 
-    def __init__(self, solr_url, repository_name):
+    def __init__(self, solr_url, repository_name, metadata_config):
         """
         Connects to an accessible Solr instance with pysolr.
 
         Parameters:
             solr_url(str): The url for a solr instance, such as http://solr.me.edu:8983/solr/my_core
+            repository_name(str): Either None or the full repository name if the --repo arg is used
+            metadata_config(list): How custom metadata fields should be indexed in Solr. 
+                This is a list of dicts with Solr dynamic field suffixes ('ssim') as the keys, such as:
+                [ssim: [field1, field2] ssm: [field3, field4] tesim: [field5]]
         """
 
         self.solr = pysolr.Solr(solr_url, always_commit=True)
         self.solr.ping()
 
         self.repository_name = repository_name
+        self.metadata_config = metadata_config
         
 
     def convert(self, record):
@@ -26,14 +31,14 @@ class Arclight():
         has_online_content = set()
 
         print(f"\tconverting to {record.id} to Solr documents...")
-        solrDocument, has_online_content, total_component_count = self.convertCollection(record, has_online_content)
+        solrDocument, has_online_content, online_item_count, total_component_count = self.convertCollection(record, has_online_content)
         solrDocument.total_component_count_is = int(total_component_count)
         
         if len(has_online_content) > 0:
             if solrDocument.id in has_online_content:
-                solrDocument.has_online_content_ssim = ["true"]
+                solrDocument.has_online_content_ssim = ["Contains online items"]
             solrDocument = self.mark_online_content(solrDocument, has_online_content)
-            solrDocument.online_item_count_is = int(len(has_online_content))
+            solrDocument.online_item_count_is = int(online_item_count)
 
         return solrDocument
 
@@ -41,14 +46,15 @@ class Arclight():
         
         for component in solrComponent.components:
             if component.ref_ssi in has_online_content:
-                component.has_online_content_ssim = ["true"]
+                if len (component.has_online_content_ssim) == 0:
+                    component.has_online_content_ssim = ["Contains online items"]
             childComponent = self.mark_online_content(component, has_online_content)
 
         return solrComponent
 
 
 
-    def convertCollection(self, record, has_online_content, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
+    def convertCollection(self, record, has_online_content, online_item_count=0, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
         """
         A recursive function to convert collection and component objects to Arclight-friendly solr docs.
         It takes a component object and converts it and any child objects to an Arclight-friendly
@@ -316,50 +322,48 @@ class Arclight():
                 containers_ssim.append(" ".join(sub_sub_container_string))
         solrDocument.containers_ssim = containers_ssim
 
-        """
-        if len(record.digital_objects) < 1:
-            has_dao = False
-        elif len(record.digital_objects) == 1 and record.digital_objects.is_representative == True:
-            solrDocument.href_sim = record.digital_objects[0].href
-            solrDocument.thumbnail_href_sim = record.digital_objects[0].thumbnail_href
-            solrDocument.label_ssm = record.digital_objects[0].label
-            solrDocument.identifier_sim = record.digital_objects[0].identifier
-            solrDocument.is_representative_sim = record.digital_objects[0].is_representative
-            solrDocument.filename_sim = record.digital_objects[0].filename
-            solrDocument.mime_type_sim = record.digital_objects[0].mime_type
-            solrDocument.rights_statement_ssm = record.digital_objects[0].rights_statement
-            for field in record.digital_objects[0].metadata.keys():
-                setattr(solrDocument, field + "_ssm", record.digital_objects[0].metadata[field])
-            #content_ssm
-        else:
-            for digital_object in record.digital_objects:
-                dao_component = SolrComponent()
-
-                solrDocument.components.append(subcomponent)
-        """
         has_dao = False
         daos = []
         for digital_object in record.digital_objects:
             has_dao = True
-            solrDocument.thumbnail_path_ss = digital_object.thumbnail_href
-            solrDocument.content_teim = digital_object.text_content
-            for field, value in digital_object.metadata.items():
-                if value not in [None, ""]:
-                    if field == "date_published":
-                        field_name = f"dado_{field}_sim"
-                    else:
-                        field_name = f"dado_{field}_ssim"
-                    setattr(solrDocument, field_name, [value])
+            if getattr(digital_object, 'thumbnail_href', None):
+                solrDocument.thumbnail_path_ss = digital_object.thumbnail_href
+            if getattr(digital_object, 'type', None):
+                solrDocument.dado_type_ssm = digital_object.type
+            if getattr(digital_object, 'action', None):
+                solrDocument.dado_action_ssm = digital_object.action
+            if getattr(digital_object, 'label', None):
+                solrDocument.dado_label_ssim = digital_object.label
+            if getattr(digital_object, 'rights_statement', None):
+                solrDocument.dado_rights_statement_ssim = [digital_object.rights_statement]
+            if getattr(digital_object, 'text_content', None):
+                solrDocument.content_teim = digital_object.text_content
+            if getattr(digital_object, 'subjects', None):
+                solrDocument.dado_subjects_ssim = digital_object.subjects
 
-            dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
-            daos.append(str(dao))
-        solrDocument.digital_objects_ssm = daos
-        #prefix = "dado_"
-        #for attr in dir(solrDocument):
-        #    if attr.startswith(prefix):
-        #        print(f"{attr} = {getattr(solrDocument, attr)}")
+            for field, value in digital_object.metadata.items():
+                if value:
+                    solr_suffix = next((k for d in self.metadata_config for k, v in d.items() if field in v), None)
+                    if solr_suffix:
+                        field_name = f"dado_{field}_{solr_suffix}"
+
+                        if isinstance(value, list):
+                            #setattr(solrDocument, field_name, value)
+                            solrDocument.add_custom_field(field_name, value)
+                        elif isinstance(value, str):
+                            #setattr(solrDocument, field_name, [value])
+                            solrDocument.add_custom_field(field_name, [value])
+                        else:
+                            raise TypeError(f"{ERROR: {field} is invalid type {type(value)}}")
+
+        # Core Arclight daos
+        #    dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
+        #    daos.append(str(dao))
+        #solrDocument.digital_objects_ssm = daos
         
         if has_dao:
+            online_item_count += 1
+            solrDocument.has_online_content_ssim = ["Online access"]
             has_online_content.add(record.id.replace(".", "-"))
             has_online_content.update(parents)
 
@@ -370,12 +374,12 @@ class Arclight():
         for component in record.components:
             total_component_count += 1
             inherited_data["child_component_count"] = len(component.components)
-            subcomponent, has_online_content, total_component_count = self.convertCollection(component, has_online_content, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
+            subcomponent, has_online_content, online_item_count, total_component_count = self.convertCollection(component, has_online_content, online_item_count, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
             order_counter += 1
             subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)
 
-        return solrDocument, has_online_content, total_component_count
+        return solrDocument, has_online_content, online_item_count, total_component_count
 
     def post(self, collection):
 

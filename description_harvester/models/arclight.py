@@ -6,6 +6,28 @@ to be POSTed to Solr.
 """
 
 class SolrCollection(models.Base):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Initialize custom fields container
+        self.custom_fields = {}
+
+    def add_custom_field(self, field_name, value):
+        """Dynamically add a custom field."""
+        self.custom_fields[field_name] = value
+
+    # Override to_struct() to include custom fields in the output
+    def to_struct(self):
+        # Get the base structure (via the parent class method)
+        data = super().to_struct()
+        
+        # Add the custom fields if any
+        if self.custom_fields:
+            data.update(self.custom_fields)
+        
+        return data
+
+    
     id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)
     unitid_tesim = fields.ListField(str)
@@ -154,18 +176,9 @@ class SolrCollection(models.Base):
     thumbnail_path_ss = fields.StringField()
     dado_type_ssm = fields.StringField()
     dado_action_ssm = fields.StringField()
-    
-    dado_subjects_ssim = fields.ListField(str)
     dado_rights_statement_ssim = fields.ListField(str)
-    dado_date_published_ssm = fields.StringField()
+    dado_subjects_ssim = fields.ListField(str)
     content_teim = fields.StringField()
-    # metadata fields
-    dado_legacy_id_ssim = fields.ListField(str)
-    dado_resource_type_ssim = fields.ListField(str)
-    dado_coverage_ssim = fields.ListField(str)
-    dado_preservation_package_ssim = fields.ListField(str)
-    dado_creator_ssim = fields.ListField(str)
-    dado_date_published_sim = fields.ListField(str)
 
     
 

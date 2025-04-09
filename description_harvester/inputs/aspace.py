@@ -402,6 +402,8 @@ class ArchivesSpace():
 
                                     
                                     record.digital_objects.append(dao)
+                            else:
+                                print (f"WARN: Digital Object has unpublished file version and was not indexed: {digital_object}")
 
         
         recursive_level += 1

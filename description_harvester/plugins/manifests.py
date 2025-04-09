@@ -10,26 +10,30 @@ class MyPlugin(Plugin):
 		# Set up any prerequisites or checks here
 
 
-	def extract_lang_value(self, obj):
-		"""
-		Extracts the first available language value from an object, with a preference for English. 
-		If the object is a dictionary, it will prioritize the 'en' key, but will fallback to the first available value. 
-		If the object is a list or string, it returns the first element or the string itself, respectively.
+	def extract_lang_value(self, obj, allow_multivalued=False):
+	    """
+	    Extracts language-specific value(s) from a dict, list, or string, preferring English ('en').
 
-		Args:
-			obj: The object containing language-specific values, which could be a dictionary, list, or string.
+	    Args:
+	        obj: A dictionary with language keys, a list of values, or a plain string.
+	        allow_multivalued (bool): If True, allows returning a list of values. If False, always returns a string.
 
-		Returns:
-			str: The extracted language value. If no suitable value is found, an empty string is returned.
-		"""
-		if isinstance(obj, dict):
-			# Prefer English, but fallback to any language
-			return obj.get("en", list(obj.values())[0])[0]
-		elif isinstance(obj, list):
-			return obj[0]
-		elif isinstance(obj, str):
-			return obj
-		return ""
+	    Returns:
+	        str or list: A string or list of strings based on allow_multivalued.
+	    """
+	    if isinstance(obj, dict):
+	        values = obj.get("en") or next(iter(obj.values()), [])
+	        if not isinstance(values, list):
+	            values = [values]
+	        return values if allow_multivalued else values[0] if values else ""
+
+	    elif isinstance(obj, list):
+	        return obj if allow_multivalued else obj[0] if obj else ""
+
+	    elif isinstance(obj, str):
+	        return [obj] if allow_multivalued else obj
+
+	    return [] if allow_multivalued else ""
 
 	def read_txt_content(self, txt_url):
 		"""
@@ -208,7 +212,7 @@ class MyPlugin(Plugin):
 					# Add metadata to dao
 					for entry in manifest.get("metadata", []):
 						label = self.extract_lang_value(entry.get("label", ""))
-						value = self.extract_lang_value(entry.get("value", ""))
+						value = self.extract_lang_value(entry.get("value", ""), allow_multivalued=True)
 
 						if label.lower() == "subjects":
 							if isinstance(value, str):

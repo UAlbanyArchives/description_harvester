@@ -52,8 +52,8 @@ def harvest(args=None):
 			repository_name = Config.read_repositories(args.repo)
 		else:
 			repository_name = None
-
-		arclight = Arclight(config.solr_url + "/" + config.solr_core, repository_name)
+		
+		arclight = Arclight(config.solr_url + "/" + config.solr_core, repository_name, config.metadata)
 		if args.repo_id:
 			aspace = ArchivesSpace(repository_id=str(args.repo_id), verbose=args.verbose)
 		else:
@@ -90,8 +90,8 @@ def harvest(args=None):
 			for collection_id in args.id:
 				record = aspace.read(collection_id)
 				if record:
-					#write2disk(record, collection_id)
 					solrDoc = arclight.convert(record)
+					write2disk(solrDoc, collection_id)
 					arclight.post(solrDoc)
 					print (f"\tIndexed {collection_id}")
 		elif args.uri:
