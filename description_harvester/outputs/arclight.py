@@ -7,21 +7,19 @@ from description_harvester.models.arclight import SolrCollection, SolrComponent
 class Arclight():
 
 
-    def __init__(self, solr_url, repository_name, metadata_config):
+    def __init__(self, solr, repository_name, metadata_config):
         """
         Connects to an accessible Solr instance with pysolr.
 
         Parameters:
-            solr_url(str): The url for a solr instance, such as http://solr.me.edu:8983/solr/my_core
+            solr(obj): A pysolr solr object, ready for solr.add()
             repository_name(str): Either None or the full repository name if the --repo arg is used
             metadata_config(list): How custom metadata fields should be indexed in Solr. 
                 This is a list of dicts with Solr dynamic field suffixes ('ssim') as the keys, such as:
                 [ssim: [field1, field2] ssm: [field3, field4] tesim: [field5]]
         """
 
-        self.solr = pysolr.Solr(solr_url, always_commit=True)
-        self.solr.ping()
-
+        self.solr = solr
         self.repository_name = repository_name
         self.metadata_config = metadata_config
         
@@ -381,7 +379,7 @@ class Arclight():
 
         return solrDocument, has_online_content, online_item_count, total_component_count
 
-    def post(self, collection):
+    def add(self, collection):
 
         print ("\tPOSTing data to Solr...")
         self.solr.add([collection.to_struct()])

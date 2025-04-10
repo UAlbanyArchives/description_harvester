@@ -40,20 +40,22 @@ def harvest(args=None):
 	#print (args)
 	if not (args.id or args.new or args.updated or args.uri or args.hour or args.today or args.delete):
 		parser.error('No action requested, need a collection ID or --updated or --new')
+
+	solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, timeout=600)
+	solr.ping()
 	
 	if args.delete:
-		solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, always_commit=True)
-		solr.ping()
 		for collection_id in args.delete:
 			solr.delete(id=collection_id.replace(".", "-"))
 			print (f"\tDeleted {collection_id}")
 	else:
+		doc_count = 0
 		if args.repo:
 			repository_name = Config.read_repositories(args.repo)
 		else:
 			repository_name = None
 		
-		arclight = Arclight(config.solr_url + "/" + config.solr_core, repository_name, config.metadata)
+		arclight = Arclight(solr, repository_name, config.metadata)
 		if args.repo_id:
 			aspace = ArchivesSpace(repository_id=str(args.repo_id), verbose=args.verbose)
 		else:
@@ -70,12 +72,11 @@ def harvest(args=None):
 				record = aspace.read_uri(collection_uri)
 				if record:
 					solrDoc = arclight.convert(record)
-					arclight.post(solrDoc)
+					arclight.add(solrDoc)
+					doc_count += 1
 					print (f"\tIndexed {record.id}")
 		elif args.new:
 			collection_ids = aspace.all_resource_ids()
-			solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, always_commit=True)
-			solr.ping()
 			for collection_id in collection_ids:
 				results = solr.search(f"id:{collection_id.replace('.', '-')}", rows=1, **{"fl": "id"})
 				if results.hits > 0:
@@ -84,7 +85,8 @@ def harvest(args=None):
 					record = aspace.read(collection_id)
 					if record:
 						solrDoc = arclight.convert(record)
-						arclight.post(solrDoc)
+						arclight.add(solrDoc)
+						doc_count += 1
 						print (f"\tIndexed {collection_id}")
 		elif args.id:
 			for collection_id in args.id:
@@ -92,15 +94,20 @@ def harvest(args=None):
 				if record:
 					solrDoc = arclight.convert(record)
 					write2disk(solrDoc, collection_id)
-					arclight.post(solrDoc)
+					arclight.add(solrDoc)
+					doc_count += 1
 					print (f"\tIndexed {collection_id}")
 		elif args.uri:
 			for collection_uri in args.uri:
 				record = aspace.read_uri(collection_uri)
 				if record:
 					solrDoc = arclight.convert(record)
-					arclight.post(solrDoc)
+					arclight.add(solrDoc)
+					doc_count += 1
 					print (f"\tIndexed {collection_uri}")
+
+		print (f"Committing {doc_count} collection docs to the Solr index...")
+		solr.commit()
 
 		lastExportTime = time.time()
 		endTimeHuman = datetime.utcfromtimestamp(lastExportTime).strftime('%Y-%m-%d %H:%M:%S')
