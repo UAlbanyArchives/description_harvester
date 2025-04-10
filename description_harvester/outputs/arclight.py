@@ -48,18 +48,23 @@ class Arclight():
         return solrComponent
 
 
-    def strip_text(self, text):
+    def strip_text(self, note_text):
         """
-        Strips HTML tags from the input text using BeautifulSoup.
-
+        Takes a string or list of strings, strips out any HTML tags, and returns a single clean string.
+        
         Args:
-            text (str): The input string that may contain HTML tags.
-
+            note_text (str or list of str): Input text containing HTML markup.
+        
         Returns:
-            str: The text content with HTML tags removed.
+            str: Cleaned text with HTML tags removed.
         """
-        stripped_text = BeautifulSoup(f"<html><body>{text}</body></html>", "html.parser").get_text()
-        return stripped_text
+        if isinstance(note_text, list):
+            combined_text = ' '.join(note_text)
+        else:
+            combined_text = str(note_text)
+
+        soup = BeautifulSoup(f"<html><body>{combined_text}</body></html>", "html.parser")
+        return soup.get_text(separator=' ', strip=True)
 
     def replace_emph_tags(self, text):
         """
@@ -355,7 +360,7 @@ class Arclight():
                 if note == "acqinfo":
                     setattr(solrDocument, note + "_ssim", note_text)
                 else:
-                    stripped_text = [self.strip_text(note_text)]
+                    stripped_text = [self.strip_text(item) for item in note_text]
                     setattr(solrDocument, note + "_tesim", stripped_text)
                     setattr(solrDocument, note + "_html_tesm", note_text)
                     if getattr(record, note + "_heading", None):
