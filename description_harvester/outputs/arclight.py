@@ -324,6 +324,8 @@ class Arclight():
         daos = []
         for digital_object in record.digital_objects:
             has_dao = True
+            if getattr(digital_object, 'identifier', None):
+                solrDocument.dado_identifier_ssm = digital_object.identifier
             if getattr(digital_object, 'thumbnail_href', None):
                 solrDocument.thumbnail_path_ss = digital_object.thumbnail_href
             if getattr(digital_object, 'type', None):
