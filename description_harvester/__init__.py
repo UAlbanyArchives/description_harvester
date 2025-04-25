@@ -4,6 +4,7 @@ import pysolr
 import argparse
 from pathlib import Path
 from datetime import datetime
+from .version import __version__
 from .configurator import Config
 from .utils import write2disk
 from description_harvester.outputs.arclight import Arclight
@@ -12,6 +13,7 @@ from description_harvester.inputs.aspace import ArchivesSpace
 def harvest(args=None):
 
 	parser = argparse.ArgumentParser(description='Description_harvester manages archival description.')
+	parser.add_argument('--version', action='version', version=f'description_harvester {__version__}', help='Show the version number and exit.')
 	parser.add_argument('-v', '--verbose', action="store_true", help='Prints individual components read.')
 	parser.add_argument('--id', nargs="+", help='One or more ASpace id_0s to index.')
 	parser.add_argument('--uri', nargs="+", help='One or more ASpace collection uri integers to index, such as 755 for /resources/755.')
@@ -25,7 +27,7 @@ def harvest(args=None):
 	parser.add_argument('--repo', help="A repository slug used by ArcLight. This will set the repository name using ArcLight's ~/repositories.yml")
 	parser.add_argument('--repo_id', type=int, help='The numerical ID for the repository in ArchivesSpace. Will default to \'2\'.')
 	#parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
-
+	
 	if args is None:
 		args = parser.parse_args()
 	else:
