@@ -33,6 +33,7 @@ class SolrCollection(models.Base):
     unitid_tesim = fields.ListField(str)
     title_ssm = fields.ListField(str)
     title_tesim = fields.ListField(str)
+    title_html_tesm = fields.ListField(str)
     title_filing_ssi = fields.StringField()
     ead_ssi = fields.ListField(str)
     total_component_count_is = fields.IntField()

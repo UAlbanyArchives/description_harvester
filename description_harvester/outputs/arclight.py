@@ -1,3 +1,4 @@
+import re
 import copy
 import pysolr
 from bs4 import BeautifulSoup
@@ -46,9 +47,93 @@ class Arclight():
             if component.ref_ssi in has_online_content:
                 if len (component.has_online_content_ssim) == 0:
                     component.has_online_content_ssim = ["Contains online items"]
+            else:
+                component.has_online_content_ssim = ["No online items"]
             childComponent = self.mark_online_content(component, has_online_content)
 
         return solrComponent
+
+
+    def strip_text(self, note_text):
+        """
+        Takes a string or list of strings, strips out any HTML tags, and returns a single clean string.
+        
+        Args:
+            note_text (str or list of str): Input text containing HTML markup.
+        
+        Returns:
+            str: Cleaned text with HTML tags removed.
+        """
+        if isinstance(note_text, list):
+            combined_text = ' '.join(note_text)
+        else:
+            combined_text = str(note_text)
+
+        soup = BeautifulSoup(f"<html><body>{combined_text}</body></html>", "html.parser")
+        return soup.get_text(separator=' ', strip=True)
+
+    def replace_emph_tags(self, text):
+        """
+        Replaces <emph> tags with corresponding HTML tags based on the 'render' attribute.
+        If no 'render' attribute is present, it defaults to italic (<i>).
+
+        Args:
+            text (str): The input EAD2002 XML text containing <emph> tags.
+
+        Returns:
+            str: The input text with <emph> tags replaced by corresponding HTML tags.
+        """
+
+        # Define a dictionary to map 'render' attribute values to HTML tags
+        render_to_html = {
+            "bold": "b",
+            "bolddoublequote": "b",
+            "bolditalic": "b",
+            "boldsinglequote": "b",
+            "boldsmcaps": "b",
+            "boldunderline": "b",
+            "doublequote": "q",
+            "italic": "i",
+            "nonproport": "pre",
+            "singlequote": "q",
+            "smcaps": "span",  # Assuming you'll style it with CSS later
+            "sub": "sub",
+            "super": "sup",
+            "underline": "u"
+        }
+
+        def replacer(match):
+            """
+            Helper function to replace <emph> tags with the corresponding HTML tags.
+
+            Args:
+                match (re.Match): The match object containing the full match of <emph> tag.
+            
+            Returns:
+                str: The text with <emph> tag replaced by HTML tags.
+            """
+            # Try to get the 'render' attribute (group 1) if available
+            render = match.group(1) if match.group(1) else None  # 'render' attribute, if present
+            content = match.group(2)  # Content inside the <emph> tag
+            
+            # If render attribute exists, use it to find the correct HTML tag
+            if render:
+                html_tag = render_to_html.get(render, "i")  # Default to 'i' if render value is unknown
+            else:
+                # Default to 'italic' if no render attribute is present
+                html_tag = "i"
+            
+            # Return content wrapped in the appropriate HTML tag
+            return f"<{html_tag}>{content}</{html_tag}>"
+
+        # Replace <emph> tags with a 'render' attribute
+        modified_text = re.sub(r'<emph render="([^"]+)">(.*?)</emph>', replacer, text)
+
+        # Replace <emph> tags without a 'render' attribute (defaults to italics)
+        modified_text = re.sub(r'<emph(.*?)>(.*?)</emph>', replacer, modified_text)
+
+        return modified_text
+
 
 
 
@@ -121,13 +206,18 @@ class Arclight():
         solrDocument.unitdate_ssm = dates
         solrDocument.normalized_date_ssm = [", ".join(string_dates)]
 
-        solrDocument.title_ssm = [record.title] if record.title else []
-        solrDocument.title_tesim = [record.title] if record.title else []
+        if record.title:
+            solrDocument.title_ssm = [self.strip_text(record.title)]
+            solrDocument.title_tesim = [self.strip_text(record.title)]
+            if "<emph" in record.title:
+                solrDocument.title_html_tesm = [self.replace_emph_tags(record.title)]
+            else:
+                solrDocument.title_html_tesm = [record.title]
         # this this empty for components, which I think is fine. v1.4 just uses the title field
         solrDocument.title_filing_ssi = record.title_filing_ssi
 
         if record.title:
-            solrDocument.normalized_title_ssm = [f"{record.title}, {solrDocument.normalized_date_ssm[0]}"]
+            solrDocument.normalized_title_ssm = [f"{solrDocument.title_ssm[0]}, {solrDocument.normalized_date_ssm[0]}"]
         else:
             solrDocument.normalized_title_ssm = [solrDocument.normalized_date_ssm[0]]
         solrDocument.component_level_isim = [recursive_level]
@@ -276,7 +366,7 @@ class Arclight():
                 if note == "acqinfo":
                     setattr(solrDocument, note + "_ssim", note_text)
                 else:
-                    stripped_text = [BeautifulSoup(f"<html><body>{item}</body></html>", "html.parser").get_text() for item in note_text]
+                    stripped_text = [self.strip_text(item) for item in note_text]
                     setattr(solrDocument, note + "_tesim", stripped_text)
                     setattr(solrDocument, note + "_html_tesm", note_text)
                     if getattr(record, note + "_heading", None):

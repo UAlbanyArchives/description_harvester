@@ -1,12 +1,21 @@
 # /usr/bin/env python3
+import os
 import setuptools
+from description_harvester import __version__
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+def read_version():
+    version_file = os.path.join(os.path.dirname(__file__), 'description_harvester', 'version.py')
+    with open(version_file) as f:
+        for line in f:
+            if line.startswith('__version__'):
+                return line.split('=')[1].strip().strip('"').strip("'")
+
 setuptools.setup(
     name="description_harvester",
-    version="0.3.9",
+    version=read_version(),
     author="Gregory Wiedeman",
     author_email="gwiedeman@albany.edu",
     description="A tool for working with archival description for public access.",
