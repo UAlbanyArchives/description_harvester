@@ -456,4 +456,4 @@ class Arclight():
     def post(self, collection):
 
         print ("\tPOSTing data to Solr...")
-        self.solr.add([collection.to_struct()])
+        self.solr.add([collection.to_dict()])

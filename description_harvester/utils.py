@@ -1,6 +1,11 @@
 import re
+import os
+import time
 import json
 from pathlib import Path
+from hashlib import md5
+from jsonmodels.errors import ValidationError
+from description_harvester.models.description import Component
 
 #Functions to make DACS dates from timestamps and ISO dates
 def stamp2DACS(timestamp):
@@ -59,12 +64,72 @@ def extract_years(date_string):
     # Return the sorted list of unique years
     return sorted(years)
 
+# Caching to disk functionality
+
+CACHE_DIR = Path.home() / ".description_harvester" / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 def write2disk(object, collection_id):
 	# takes a jsonmodel object and writes it to disk for testing
 
-	test_path = Path.home() / "description_harvester"
+	test_path = Path.home() / ".description_harvester"
 	test_path.mkdir(parents=True, exist_ok=True)
 	out_path = test_path / f"{collection_id}.json"
 
 	with open(out_path, "w") as file:
-		json.dump(object.to_struct(), file, indent=4)
+		json.dump(object.to_dict(), file, indent=4)
+
+def get_cache_key(identifier):
+    # Handles special characters and URIs cleanly
+    return md5(str(identifier).encode()).hexdigest() + ".json"
+
+def component_from_dict(data):
+    """
+    Recursively rebuild a Component instance (and its nested children) from a dict.
+    """
+    # First create the base Component without components
+    components_data = data.pop('components', [])
+    component = Component(**data)
+
+    # Now recursively load any nested components
+    for child in components_data:
+        component.components.append(component_from_dict(child))
+
+    return component
+
+def save_to_cache(identifier, data):
+    """
+    Save the given jsonmodel data to a cache file.
+    """
+    key = get_cache_key(identifier)
+    
+    # Convert `data` (a jsonmodel object) to a dictionary using `to_dict()`
+    if hasattr(data, 'to_dict'):
+        data = data.to_dict()  # Convert the jsonmodel object to a dictionary
+    
+    # Ensure the cache directory exists
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Save the data along with a timestamp
+    with open(CACHE_DIR / key, "w") as f:
+        json.dump({
+            "timestamp": int(time.time()),
+            "data": data
+        }, f)
+
+def load_from_cache(identifier, max_age_seconds=86400):
+    key = get_cache_key(identifier)
+    path = CACHE_DIR / key
+    print(f"Cache path: {path}")
+    
+    if path.exists():
+        with open(path, "r") as f:
+            cached = json.load(f)
+            age = time.time() - cached["timestamp"]
+            if age < max_age_seconds:
+                try:
+                    return component_from_dict(cached["data"])
+                except Exception as e:
+                    print(f"Error rebuilding model: {e}")
+                    return None
+    return None

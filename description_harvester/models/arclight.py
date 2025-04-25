@@ -1,3 +1,4 @@
+from .model_utils import filter_empty_fields
 from jsonmodels import models, fields, errors, validators
 
 """
@@ -6,6 +7,13 @@ to be POSTed to Solr.
 """
 
 class SolrCollection(models.Base):
+
+    def to_dict(self):
+        """
+        Convert the model instance to a dictionary with empty fields removed.
+        """
+        return filter_empty_fields(self.to_struct())
+
     id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)
     unitid_tesim = fields.ListField(str)
