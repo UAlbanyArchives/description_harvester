@@ -32,7 +32,7 @@ class Arclight():
         
         if len(has_online_content) > 0:
             if solrDocument.id in has_online_content:
-                solrDocument.has_online_content_ssim = ["true"]
+                solrDocument.has_online_content_ssim = ["true"]                
             solrDocument = self.mark_online_content(solrDocument, has_online_content)
             solrDocument.online_item_count_is = int(len(has_online_content))
 
@@ -43,6 +43,8 @@ class Arclight():
         for component in solrComponent.components:
             if component.ref_ssi in has_online_content:
                 component.has_online_content_ssim = ["true"]
+            else:
+                component.has_online_content_ssim = ["false"]
             childComponent = self.mark_online_content(component, has_online_content)
 
         return solrComponent
