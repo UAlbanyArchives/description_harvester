@@ -21,6 +21,7 @@ Next, you also need a `~/.description_harvester/config.yml` file that lists your
 solr_url: http://127.0.0.1:8983/solr
 solr_core: blacklight-core
 last_query: 0
+cache_expiration: 3600
 ```
 
 ### Repositories
@@ -66,6 +67,10 @@ Index collections not already in the index: `harvest --new`
 You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
 
 `harvest --delete apap101 apap301`
+
+## Caching
+
+description_harvester will cache collections from the ArchivesSpace API, storing them to `~/.description_harvester/cache` after they are converted to the description model. Cache time is set in seconds as `cache_expiration` in `~/.description_harvester/config.yml`. Thus, `cache_expiration: 3600` will use the cached data instead of the ArchivesSpace API for data less than 1 hour old.
 
 ## Plugins
 
