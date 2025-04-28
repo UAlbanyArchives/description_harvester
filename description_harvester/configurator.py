@@ -4,7 +4,7 @@ from pathlib import Path
 class Config:
 
 	def __init__(self):
-		with open(Path.home() / ".description_harvester.yml", "r") as f:
+		with open(Path.home() / ".description_harvester/config.yml", "r") as f:
 			config = yaml.safe_load(f)
 
 			for k in config.keys():
@@ -28,7 +28,7 @@ class Config:
 
 		"""
 
-		repositories_path = Path.home() / "repositories.yml"
+		repositories_path = Path.home() / ".description_harvester/repositories.yml"
 
 		if not repositories_path.exists():
 			raise FileNotFoundError(f"The repositories configuration file {repositories_path} does not exist.")

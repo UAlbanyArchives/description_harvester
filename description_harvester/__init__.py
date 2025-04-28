@@ -10,6 +10,8 @@ from .utils import write2disk, save_to_cache, load_from_cache
 from description_harvester.outputs.arclight import Arclight
 from description_harvester.inputs.aspace import ArchivesSpace
 
+config = Config()
+
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description='Description_harvester manages archival description.')
     parser.add_argument('--version', action='version', version=f'description_harvester {__version__}')
@@ -34,7 +36,7 @@ def post_record(arclight, record, verbose=False):
     arclight.post(solr_doc)
     print(f"\tIndexed {record.id}")
 
-def get_time_since(args, config):
+def get_time_since(args):
     if args.updated:
         return config.last_query
     if args.hour:
@@ -45,7 +47,7 @@ def get_time_since(args, config):
 
 def index_record(arclight, aspace, collection_id, use_uri=False, verbose=False):
     loader = aspace.read_uri if use_uri else aspace.read
-    record = load_from_cache(collection_id)
+    record = load_from_cache(collection_id, config.cache_expiration)
     if not record:
         record = loader(collection_id)
         if record:
@@ -65,7 +67,6 @@ def harvest(args=None):
     start_time = time.time()
     print(f"\n------------------------------\nRan at: {datetime.fromtimestamp(start_time)}")
 
-    config = Config()
     if not (args.id or args.new or args.updated or args.uri or args.hour or args.today or args.delete):
         print("No action requested, need a collection ID or --updated or --new")
         return
@@ -82,7 +83,7 @@ def harvest(args=None):
     aspace = ArchivesSpace(repository_id=repo_id, verbose=args.verbose)
     arclight = Arclight(f"{solr_url}/{solr_core}", repository_name)
 
-    time_since = get_time_since(args, config)
+    time_since = get_time_since(args)
     if time_since is not None:
         for uri in aspace.read_since(time_since):
             print (uri)

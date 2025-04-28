@@ -15,7 +15,7 @@ pip install description_harvester
 
 First, you need to configure ArchivesSnake by creating a `~/.archivessnake.yml`file with your API credentials as detailed by the [ArchivesSnake configuration docs](https://github.com/archivesspace-labs/ArchivesSnake#configuration).
 
-Next, you also need a `~/.description_harvester.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args.
+Next, you also need a `~/.description_harvester/config.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args.
 
 ```yml
 solr_url: http://127.0.0.1:8983/solr
@@ -27,9 +27,9 @@ last_query: 0
 
 By default, when reading from ArchivesSpace, description harvester will use the repository name stored there.
 
-To enable the --repo argument, place a copy of your ArcLight repositories.yml file in ~. You can then use `harvest --id mss001 --repo slug` to index using the slug from repositories.yml. This will overrite the ArchivesSpace repository name.
+To enable the --repo argument, place a copy of your ArcLight repositories.yml file as `~/.description_harvester/repositories.yml`. You can then use `harvest --id mss001 --repo slug` to index using the slug from repositories.yml. This will overrite the ArchivesSpace repository name.
 
-There is also the option do customize this with a plugin.
+There is also the option do customize this with a [plugin](https://github.com/UAlbanyArchives/description_harvester_plugins/blob/main/repo_plugin.py).
 
 ## Indexing from ArchivesSpace API to Arclight
 

@@ -120,7 +120,6 @@ def save_to_cache(identifier, data):
 def load_from_cache(identifier, max_age_seconds=86400):
     key = get_cache_key(identifier)
     path = CACHE_DIR / key
-    print(f"Cache path: {path}")
     
     if path.exists():
         with open(path, "r") as f:
@@ -128,8 +127,9 @@ def load_from_cache(identifier, max_age_seconds=86400):
             age = time.time() - cached["timestamp"]
             if age < max_age_seconds:
                 try:
+                    print (f"\tReading from cache: {path}")
                     return component_from_dict(cached["data"])
                 except Exception as e:
-                    print(f"Error rebuilding model: {e}")
+                    print(f"\tError rebuilding model: {e}")
                     return None
     return None
