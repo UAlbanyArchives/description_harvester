@@ -1,7 +1,6 @@
 # /usr/bin/env python3
 import os
 import setuptools
-from description_harvester import __version__
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()

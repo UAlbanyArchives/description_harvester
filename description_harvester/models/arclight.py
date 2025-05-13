@@ -1,3 +1,4 @@
+from .model_utils import filter_empty_fields
 from jsonmodels import models, fields, errors, validators
 
 """
@@ -16,8 +17,11 @@ class SolrCollection(models.Base):
         """Dynamically add a custom field."""
         self.custom_fields[field_name] = value
 
-    # Override to_struct() to include custom fields in the output
-    def to_struct(self):
+    def to_dict(self):
+        """
+        Convert the model instance to a dictionary, including custom fields.
+        Removes empty fields.
+        """
         # Get the base structure (via the parent class method)
         data = super().to_struct()
         
@@ -25,9 +29,9 @@ class SolrCollection(models.Base):
         if self.custom_fields:
             data.update(self.custom_fields)
         
-        return data
+        # Remove empty fields
+        return filter_empty_fields(data)
 
-    
     id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)
     unitid_tesim = fields.ListField(str)

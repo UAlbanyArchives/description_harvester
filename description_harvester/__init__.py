@@ -6,118 +6,121 @@ from pathlib import Path
 from datetime import datetime
 from .version import __version__
 from .configurator import Config
-from .utils import write2disk
+from .utils import write2disk, save_to_cache, load_from_cache
 from description_harvester.outputs.arclight import Arclight
 from description_harvester.inputs.aspace import ArchivesSpace
 
+config = Config()
+
+def parse_args(args=None):
+    parser = argparse.ArgumentParser(description='Description_harvester manages archival description.')
+    parser.add_argument('--version', action='version', version=f'description_harvester {__version__}')
+    parser.add_argument('-v', '--verbose', action="store_true")
+    parser.add_argument('--id', nargs="+")
+    parser.add_argument('--uri', nargs="+")
+    parser.add_argument('--delete', nargs="+")
+    parser.add_argument('--updated', action="store_true")
+    parser.add_argument('--new', action="store_true")
+    parser.add_argument('--hour', action="store_true")
+    parser.add_argument('--today', action="store_true")
+    parser.add_argument('--solr_url', nargs=1)
+    parser.add_argument('--core', nargs=1)
+    parser.add_argument('--repo')
+    parser.add_argument('--repo_id', type=int)
+    #parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
+    
+    return parser.parse_args(args) if args else parser.parse_args()
+
+def add_record(arclight, record, verbose=False):
+    solr_doc = arclight.convert(record)
+    arclight.add(solr_doc)
+    print(f"\tIndexed {record.id}")
+
+def get_time_since(args):
+    if args.updated:
+        return config.last_query
+    if args.hour:
+        return str(int(time.time()) - 3600)
+    if args.today:
+        return str(int(time.time()) - 86400)
+    return None
+
+def index_record(arclight, aspace, collection_id, use_uri=False, verbose=False):
+    loader = aspace.read_uri if use_uri else aspace.read
+    record = load_from_cache(collection_id, config.cache_expiration)
+    if not record:
+        record = loader(collection_id)
+        if record:
+            save_to_cache(collection_id, record)
+    if record:
+        add_record(arclight, record, verbose)
+
+def handle_deletions(solr_url, solr_core, collection_ids):
+    solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=True)
+    solr.ping()
+    for collection_id in collection_ids:
+        solr.delete(id=collection_id.replace(".", "-"))
+        print(f"\tDeleted {collection_id}")
+
 def harvest(args=None):
+    args = parse_args(args)
+    start_time = time.time()
+    print(f"\n------------------------------\nRan at: {datetime.fromtimestamp(start_time)}")
 
-	parser = argparse.ArgumentParser(description='Description_harvester manages archival description.')
-	parser.add_argument('--version', action='version', version=f'description_harvester {__version__}', help='Show the version number and exit.')
-	parser.add_argument('-v', '--verbose', action="store_true", help='Prints individual components read.')
-	parser.add_argument('--id', nargs="+", help='One or more ASpace id_0s to index.')
-	parser.add_argument('--uri', nargs="+", help='One or more ASpace collection uri integers to index, such as 755 for /resources/755.')
-	parser.add_argument('--delete', nargs="+", help='The ID for the collection to be removed from the index.')
-	parser.add_argument('--updated', default=False, action="store_true", help='Index collections modified since last run.')
-	parser.add_argument('--new', default=False, action="store_true", help='Index collections not already present in the index.')
-	parser.add_argument('--hour', default=False, action="store_true", help='Index collections modified in the last hour.')
-	parser.add_argument('--today', default=False, action="store_true", help='Index collections modified in the last 24 hours.')
-	parser.add_argument('--solr_url', nargs=1, help='A solr URL, such as http://127.0.0.1:8983/solr, to override ~/.description_harvester.yml')
-	parser.add_argument('--core', nargs=1, help='A solr core, such as blacklight-core, to override ~/.description_harvester.yml')
-	parser.add_argument('--repo', help="A repository slug used by ArcLight. This will set the repository name using ArcLight's ~/repositories.yml")
-	parser.add_argument('--repo_id', type=int, help='The numerical ID for the repository in ArchivesSpace. Will default to \'2\'.')
-	#parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
-	
-	if args is None:
-		args = parser.parse_args()
-	else:
-		args = parser.parse_args(args)
+    if not (args.id or args.new or args.updated or args.uri or args.hour or args.today or args.delete):
+        print("No action requested, need a collection ID or --updated or --new")
+        return
 
-	start_time = time.time()
-	start_time_readable = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
-	print("------------------------------")
-	print(f"Ran at: {start_time_readable}")
-	config = Config()
-	
-	#print (args)
-	if not (args.id or args.new or args.updated or args.uri or args.hour or args.today or args.delete):
-		parser.error('No action requested, need a collection ID or --updated or --new')
+    solr_url = args.solr_url[0] if args.solr_url else config.solr_url
+    solr_core = args.core[0] if args.core else config.solr_core
 
-	solr = pysolr.Solr(config.solr_url + "/" + config.solr_core, timeout=600)
-	solr.ping()
-	
-	if args.delete:
-		for collection_id in args.delete:
-			solr.delete(id=collection_id.replace(".", "-"))
-			print (f"\tDeleted {collection_id}")
-	else:
-		doc_count = 0
-		if args.repo:
-			repository_name = Config.read_repositories(args.repo)
-		else:
-			repository_name = None
-		
-		arclight = Arclight(solr, repository_name, config.metadata)
-		if args.repo_id:
-			aspace = ArchivesSpace(repository_id=str(args.repo_id), verbose=args.verbose)
-		else:
-			aspace = ArchivesSpace(repository_id=2, verbose=args.verbose)
-		if args.updated or args.hour or args.today:
-			if args.updated:
-				time_since = config.last_query	
-			elif args.hour:
-				time_since = str(time.time() - 3600).split(".")[0]
-			elif args.today:
-				time_since = str(time.time() - 86400).split(".")[0]
-			collection_uris = aspace.read_since(time_since)
-			for collection_uri in collection_uris:
-				record = aspace.read_uri(collection_uri)
-				if record:
-					solrDoc = arclight.convert(record)
-					arclight.add(solrDoc)
-					doc_count += 1
-					print (f"\tIndexed {record.id}")
-		elif args.new:
-			collection_ids = aspace.all_resource_ids()
-			for collection_id in collection_ids:
-				results = solr.search(f"id:{collection_id.replace('.', '-')}", rows=1, **{"fl": "id"})
-				if results.hits > 0:
-					print(f"\tSkipping {collection_id} as it already exists.")
-				else:
-					record = aspace.read(collection_id)
-					if record:
-						solrDoc = arclight.convert(record)
-						arclight.add(solrDoc)
-						doc_count += 1
-						print (f"\tIndexed {collection_id}")
-		elif args.id:
-			for collection_id in args.id:
-				record = aspace.read(collection_id)
-				if record:
-					solrDoc = arclight.convert(record)
-					write2disk(solrDoc, collection_id)
-					arclight.add(solrDoc)
-					doc_count += 1
-					print (f"\tIndexed {collection_id}")
-		elif args.uri:
-			for collection_uri in args.uri:
-				record = aspace.read_uri(collection_uri)
-				if record:
-					solrDoc = arclight.convert(record)
-					arclight.add(solrDoc)
-					doc_count += 1
-					print (f"\tIndexed {collection_uri}")
+    if args.delete:
+        handle_deletions(solr_url, solr_core, args.delete)
+        return
 
-		print (f"Committing {doc_count} collection docs to the Solr index...")
-		solr.commit()
+    solr = pysolr.Solr(f"{solr_url}/{solr_core}", timeout=600)
+    solr.ping()
 
-		lastExportTime = time.time()
-		endTimeHuman = datetime.utcfromtimestamp(lastExportTime).strftime('%Y-%m-%d %H:%M:%S')
-		config.last_query = str(lastExportTime).split(".")[0]
-		with open(Path.home() / ".description_harvester.yml", "w") as f:
-			yaml.dump(config.__dict__, f)
-		print (f"Stored last run time as: {endTimeHuman}")
-	end_time = time.time()
-	duration = end_time - start_time
-	print(f"Execution time: {duration:.4f} seconds")
-	
+    repository_name = Config.read_repositories(args.repo) if args.repo else None
+    repo_id = str(args.repo_id) if args.repo_id else '2'
+    aspace = ArchivesSpace(repository_id=repo_id, verbose=args.verbose)
+    arclight = Arclight(solr, repository_name, config.metadata)
+    doc_count = 0
+
+    time_since = get_time_since(args)
+    if time_since is not None:
+        for uri in aspace.read_since(time_since):
+            index_record(arclight, aspace, uri, use_uri=True, verbose=args.verbose)
+            doc_count += 1
+
+    if args.new:
+        for cid in aspace.all_resource_ids():
+            results = solr.search(f"id:{cid.replace('.', '-')}", rows=1, **{"fl": "id"})
+            if results.hits == 0:
+                index_record(arclight, aspace, cid, verbose=args.verbose)
+                doc_count += 1
+            else:
+                print(f"\tSkipping {cid} (already exists)")
+
+    if args.id:
+        for cid in args.id:
+            index_record(arclight, aspace, cid, verbose=args.verbose)
+            doc_count += 1
+
+    if args.uri:
+        for uri in args.uri:
+            index_record(arclight, aspace, uri, use_uri=True, verbose=args.verbose)
+            doc_count += 1
+
+    print (f"Committing {doc_count} collection docs to the Solr index...")
+    solr.commit()
+
+    end_time = time.time()
+    config.last_query = str(int(end_time))
+    with open(Path.home() / ".description_harvester.yml", "w") as f:
+        yaml.dump(config.__dict__, f)
+
+    print(f"Stored last run time as: {datetime.utcfromtimestamp(end_time)}")
+    print(f"Execution time: {end_time - start_time:.2f} seconds")
+
+    

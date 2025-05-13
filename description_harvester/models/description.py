@@ -1,3 +1,4 @@
+from .model_utils import filter_empty_fields
 from jsonmodels import models, fields, errors, validators
 
 """
@@ -43,6 +44,13 @@ class DigitalObject(models.Base):
     text_content = fields.StringField()
 
 class Component(models.Base):
+
+    def to_dict(self):
+        """
+        Convert the model instance to a dictionary with empty fields removed.
+        """
+        return filter_empty_fields(self.to_struct())
+
     id = fields.StringField(required=True)
     collection_id = fields.StringField(required=True)
     # title should really be required as it is in DACS, but its not in ASpace/EAD or the existing ArcLight indexer.

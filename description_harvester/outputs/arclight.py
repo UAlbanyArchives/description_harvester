@@ -431,20 +431,22 @@ class Arclight():
             if getattr(digital_object, 'subjects', None):
                 solrDocument.dado_subjects_ssim = digital_object.subjects
 
-            for field, value in digital_object.metadata.items():
-                if value:
-                    solr_suffix = next((k for d in self.metadata_config for k, v in d.items() if field in v), None)
-                    if solr_suffix:
-                        field_name = f"dado_{field}_{solr_suffix}"
+            # caching doesn't keep attributes like digital_object.metadata with they are empty
+            if not digital_object.metadata is None:
+                for field, value in digital_object.metadata.items():
+                    if value:
+                        solr_suffix = next((k for d in self.metadata_config for k, v in d.items() if field in v), None)
+                        if solr_suffix:
+                            field_name = f"dado_{field}_{solr_suffix}"
 
-                        if isinstance(value, list):
-                            #setattr(solrDocument, field_name, value)
-                            solrDocument.add_custom_field(field_name, value)
-                        elif isinstance(value, str):
-                            #setattr(solrDocument, field_name, [value])
-                            solrDocument.add_custom_field(field_name, [value])
-                        else:
-                            raise TypeError(f"{ERROR: {field} is invalid type {type(value)}}")
+                            if isinstance(value, list):
+                                #setattr(solrDocument, field_name, value)
+                                solrDocument.add_custom_field(field_name, value)
+                            elif isinstance(value, str):
+                                #setattr(solrDocument, field_name, [value])
+                                solrDocument.add_custom_field(field_name, [value])
+                            else:
+                                raise TypeError(f"{ERROR: {field} is invalid type {type(value)}}")
 
         # Core Arclight daos
         #    dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
@@ -473,5 +475,5 @@ class Arclight():
 
     def add(self, collection):
 
-        print ("\tPOSTing data to Solr...")
-        self.solr.add([collection.to_struct()])
+        print ("\tadding data to Solr...")
+        self.solr.add([collection.to_dict()])
