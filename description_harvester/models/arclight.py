@@ -1,4 +1,4 @@
-from .model_utils import filter_empty_fields
+from .model_utils import filter_empty_fields, to_struct_with_custom_fields
 from jsonmodels import models, fields, errors, validators
 
 """
@@ -19,18 +19,18 @@ class SolrCollection(models.Base):
 
     def to_dict(self):
         """
-        Convert the model instance to a dictionary, including custom fields.
-        Removes empty fields.
+        Converts the SolrCollection instance into a cleaned dictionary with custom fields included as attibutes.
+        
+        This includes:
+        - Base fields from `to_struct()`
+        - Dynamically added `custom_fields` (neccessary after because they're not specified individualy)
+        - Recursively processed nested `components` (if present)
+        - Removal of any empty fields (None, '', [], {})
+        
+        Returns:
+            dict: A cleaned and complete dictionary representation of the object.
         """
-        # Get the base structure (via the parent class method)
-        data = super().to_struct()
-        
-        # Add the custom fields if any
-        if self.custom_fields:
-            data.update(self.custom_fields)
-        
-        # Remove empty fields
-        return filter_empty_fields(data)
+        return filter_empty_fields(to_struct_with_custom_fields(self))
 
     id = fields.StringField(required=True)
     unitid_ssm = fields.ListField(str)

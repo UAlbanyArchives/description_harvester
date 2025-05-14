@@ -447,7 +447,7 @@ class Arclight():
                                 solrDocument.add_custom_field(field_name, [value])
                             else:
                                 raise TypeError(f"{ERROR: {field} is invalid type {type(value)}}")
-
+                
         # Core Arclight daos
         #    dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
         #    daos.append(str(dao))
