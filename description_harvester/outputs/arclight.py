@@ -148,6 +148,7 @@ class Arclight():
             parent_titles (list): A list of parent names as strings
             parent_levels (list): A list of parent levels as strings
             inherited_data(dict): data inherited from upper-level ASpace API objects
+                collection_id (str): The ID for the collection
                 collection_name (list): The resource title
                 child_component_count (int): The number of child components
                 collection_creator (list): The collection-level creator as a list of strings
@@ -224,6 +225,7 @@ class Arclight():
             solrDocument.unitid_tesim = [record.collection_id]
             solrDocument.collection_ssim = solrDocument.normalized_title_ssm
             solrDocument.sort_isi = 0
+            inherited_data['collection_id'] = solrDocument.id 
             inherited_data['collection_name'] = solrDocument.normalized_title_ssm
             col_creators = []
             for col_creator in record.creators:
@@ -249,9 +251,15 @@ class Arclight():
             #if "collection_creator" in inherited_data.keys():
             #    solrDocument.collection_creator_ssm = inherited_data['collection_creator']
 
-            # not sure why this is stored twice
+            # parent_ssim is just parent ids while parent_ids_ssim is full doc id with collection id prefix
             solrDocument.parent_ssim = parents
-            solrDocument.parent_ids_ssim = parents
+            parent_ids = []
+            for parent in parents:
+                if parent == inherited_data['collection_id']:
+                    parent_ids.append(parent)
+                else:
+                    parent_ids.append(inherited_data['collection_id'] + parent)
+            solrDocument.parent_ids_ssim = parent_ids
             # parent_ssi appears to be only the immediate parent
             if len(parents) > 0:
                 solrDocument.parent_ssi = [parents[-1]]
