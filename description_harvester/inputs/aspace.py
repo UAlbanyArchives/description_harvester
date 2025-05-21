@@ -238,7 +238,7 @@ class ArchivesSpace():
         record = Component()
         
         #record.title = apiObject["title"]
-        record.title = apiObject.get("title", None).replace("<emph>", "<i>").replace("</emph>", "</i>")
+        record.title = apiObject.get("title", "").replace("<emph>", "<i>").replace("</emph>", "</i>")
 
         record.title_filing_ssi = apiObject.get("finding_aid_filing_title", None)
         record.level = apiObject["level"]
