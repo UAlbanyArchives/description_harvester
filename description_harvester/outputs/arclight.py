@@ -419,7 +419,7 @@ class Arclight():
         solrDocument.containers_ssim = containers_ssim
 
         has_dao = False
-        daos = []
+        legacy_daos = []
         for digital_object in record.digital_objects:
             has_dao = True
             if getattr(digital_object, 'identifier', None):
@@ -431,7 +431,7 @@ class Arclight():
             if getattr(digital_object, 'action', None):
                 solrDocument.dado_action_ssm = digital_object.action
             if getattr(digital_object, 'label', None):
-                solrDocument.dado_label_ssim = digital_object.label
+                solrDocument.dado_label_tesim = digital_object.label
             if getattr(digital_object, 'rights_statement', None):
                 solrDocument.dado_rights_statement_ssim = [digital_object.rights_statement]
             if getattr(digital_object, 'text_content', None):
@@ -456,10 +456,10 @@ class Arclight():
                             else:
                                 raise TypeError(f"{ERROR: {field} is invalid type {type(value)}}")
                 
-        # Core Arclight daos
-        #    dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
-        #    daos.append(str(dao))
-        #solrDocument.digital_objects_ssm = daos
+            #Legacy Core Arclight daos
+            legacy_dao = "{\"label\":\"" + digital_object.label + "\",\"href\":\"" + digital_object.identifier + "\"}"
+            legacy_daos.append(str(legacy_dao))
+        solrDocument.digital_objects_ssm = legacy_daos
         
         if has_dao:
             online_item_count += 1

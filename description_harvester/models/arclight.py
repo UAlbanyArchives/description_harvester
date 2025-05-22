@@ -177,7 +177,7 @@ class SolrCollection(models.Base):
 
     # From DAO records
     dado_identifier_ssm = fields.StringField()
-    dado_label_tesim = fields.ListField(str)
+    dado_label_tesim = fields.StringField()
     thumbnail_path_ss = fields.StringField()
     dado_type_ssm = fields.StringField()
     dado_action_ssm = fields.StringField()

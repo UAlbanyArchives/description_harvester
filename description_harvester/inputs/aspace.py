@@ -392,11 +392,14 @@ class ArchivesSpace():
                             if file_version.get("publish", False):
                                 if "file_uri" in file_version.keys():
                                     dao = DigitalObject()
-                                    dao.identifier = file_version["file_uri"]
-                                    dao.label = digital_object["title"]
+                                    dao.identifier = file_version.get("file_uri", None)
+                                    dao.label = digital_object.get("title", "")
+                                    
+                                    # This block needs to be removed once our ASpace data is updated
+                                    if dao.identifier.lower().startswith("https://archives.albany.edu/concern/"):
+                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
 
                                     for plugin in self.plugins:
-                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
                                         updated_dao = plugin.read_data(dao)
                                         if updated_dao:
                                             dao = updated_dao
