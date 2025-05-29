@@ -1,5 +1,6 @@
 import re
 import copy
+import json
 import pysolr
 from bs4 import BeautifulSoup
 from description_harvester.utils import extract_years
@@ -457,8 +458,11 @@ class Arclight():
                                 raise TypeError(f"{ERROR: {field} is invalid type {type(value)}}")
                 
             #Legacy Core Arclight daos
-            legacy_dao = "{\"label\":\"" + digital_object.label.replace('"', '\\"') + "\",\"href\":\"" + digital_object.identifier + "\"}"
-            legacy_daos.append(str(legacy_dao))
+            legacy_dao = {
+                "label": digital_object.label,
+                "href": digital_object.identifier
+            }
+            legacy_daos.append(json.dumps(legacy_dao))
         solrDocument.digital_objects_ssm = legacy_daos
         
         if has_dao:
