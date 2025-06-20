@@ -439,6 +439,8 @@ class Arclight():
                 solrDocument.content_teim = digital_object.text_content
             if getattr(digital_object, 'subjects', None):
                 solrDocument.dado_subjects_ssim = digital_object.subjects
+            if getattr(digital_object, 'creators', None):
+                solrDocument.creator_ssim = digital_object.creators
 
             # caching doesn't keep attributes like digital_object.metadata with they are empty
             if not digital_object.metadata is None:

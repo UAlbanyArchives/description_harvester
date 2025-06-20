@@ -398,6 +398,10 @@ class ArchivesSpace():
                                     # This block needs to be removed once our ASpace data is updated
                                     if dao.identifier.lower().startswith("https://archives.albany.edu/concern/"):
                                         dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
+                                    elif dao.identifier.lower().startswith("https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]="):
+                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
+                                    elif "library.albany.edu/speccoll/findaids/eresources/dao/" in dao.identifier.lower():
+                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
 
                                     for plugin in self.plugins:
                                         updated_dao = plugin.read_data(dao)

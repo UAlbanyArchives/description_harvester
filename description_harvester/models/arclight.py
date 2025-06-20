@@ -150,7 +150,6 @@ class SolrCollection(models.Base):
     note_tesim = fields.ListField(str)
     note_html_tesm = fields.ListField(str)
 
-
     names_coll_ssim = fields.ListField(str)
     names_ssim = fields.ListField(str)
     corpname_ssim = fields.ListField(str)

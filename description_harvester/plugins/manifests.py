@@ -164,22 +164,22 @@ class MyPlugin(Plugin):
 		"""
 
 		# Start by checking if the identifier is a manifest URL
-		if not "manifest.json" in dao.identifier:
+		if not "manifest.json" in dao.identifier and not "https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]=" in dao.identifier:
 			dao.action = "link"
 		else:
-			dao.action = "embed"
-			dao.text_content = None
-			
-			# Initialize metadata if it's None
-			if dao.metadata is None:
-				dao.metadata = {}
-
 			# Fetch the manifest
 			response = requests.get(dao.identifier)
 			if response.status_code != 200:
-				print (f"Failed to fetch manifest: {response.status_code}")
+				print (f"Failed to fetch manifest: {response.status_code}, linking instead of embeding.")
+				dao.action = "link"
 				#raise ValueError(f"Failed to fetch manifest: {response.status_code}")
 			else:
+				dao.action = "embed"
+				dao.text_content = None
+			
+				# Initialize metadata if it's None
+				if dao.metadata is None:
+					dao.metadata = {}
 
 				# Parse the manifest
 				manifest = response.json()
@@ -214,15 +214,15 @@ class MyPlugin(Plugin):
 						label = self.extract_lang_value(entry.get("label", ""))
 						value = self.extract_lang_value(entry.get("value", ""), allow_multivalued=True)
 
-						if label.lower() == "subjects":
-							if isinstance(value, str):
-								dao.subjects = [value]
-							elif isinstance(value, list):
-								dao.subjects = value
-							else:
-								dao.subjects = [str(value)]
+						label_name = label.lower()
+						target_fields = {"subjects", "creators"}
+						if label_name in target_fields:
+						    normalized_value = [value] if isinstance(value, str) else (
+						        value if isinstance(value, list) else [str(value)]
+						    )
+						    setattr(dao, label_name, normalized_value)
 						else:
-							dao.metadata[label] = value
+						    dao.metadata[label] = value
 
 				# Handle V2 Manifest
 				elif is_v2:

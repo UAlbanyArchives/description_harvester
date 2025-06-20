@@ -41,6 +41,7 @@ class DigitalObject(models.Base):
     rights_statement = fields.StringField()
     metadata = fields.DictField()
     subjects = fields.ListField(str)
+    creators = fields.ListField(str)
     text_content = fields.StringField()
 
 class Component(models.Base):

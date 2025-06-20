@@ -16,6 +16,7 @@ def parse_args(args=None):
     parser = argparse.ArgumentParser(description='Description_harvester manages archival description.')
     parser.add_argument('--version', action='version', version=f'description_harvester {__version__}')
     parser.add_argument('-v', '--verbose', action="store_true")
+    parser.add_argument('-nc', '--no-cache', action="store_true")
     parser.add_argument('--id', nargs="+")
     parser.add_argument('--uri', nargs="+")
     parser.add_argument('--delete', nargs="+")
@@ -45,15 +46,17 @@ def get_time_since(args):
         return str(int(time.time()) - 86400)
     return None
 
-def index_record(arclight, aspace, collection_id, use_uri=False, verbose=False):
+def index_record(args, arclight, aspace, collection_id, use_uri=False):
     loader = aspace.read_uri if use_uri else aspace.read
-    record = load_from_cache(collection_id, config.cache_expiration)
+    record = None
+    if not args.no_cache:
+        record = load_from_cache(collection_id, config.cache_expiration)
     if not record:
         record = loader(collection_id)
         if record:
             save_to_cache(collection_id, record)
     if record:
-        add_record(arclight, record, verbose)
+        add_record(arclight, record, args.verbose)
 
 def handle_deletions(solr_url, solr_core, collection_ids):
     solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=True)
@@ -90,26 +93,26 @@ def harvest(args=None):
     time_since = get_time_since(args)
     if time_since is not None:
         for uri in aspace.read_since(time_since):
-            index_record(arclight, aspace, uri, use_uri=True, verbose=args.verbose)
+            index_record(args, arclight, aspace, uri, use_uri=True)
             doc_count += 1
 
     if args.new:
         for cid in aspace.all_resource_ids():
             results = solr.search(f"id:{cid.replace('.', '-')}", rows=1, **{"fl": "id"})
             if results.hits == 0:
-                index_record(arclight, aspace, cid, verbose=args.verbose)
+                index_record(args, arclight, aspace, cid)
                 doc_count += 1
             else:
                 print(f"\tSkipping {cid} (already exists)")
 
     if args.id:
         for cid in args.id:
-            index_record(arclight, aspace, cid, verbose=args.verbose)
+            index_record(args, arclight, aspace, cid)
             doc_count += 1
 
     if args.uri:
         for uri in args.uri:
-            index_record(arclight, aspace, uri, use_uri=True, verbose=args.verbose)
+            index_record(args, arclight, aspace, uri, use_uri=True)
             doc_count += 1
 
     print (f"Committing {doc_count} collection docs to the Solr index...")
