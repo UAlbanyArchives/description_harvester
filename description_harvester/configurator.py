@@ -4,7 +4,7 @@ from pathlib import Path
 class Config:
 
 	def __init__(self):
-		with open(Path.home() / ".description_harvester/config.yml", "r") as f:
+		with open(Path.home() / ".description_harvester/config.yml", "r", encoding='utf-8') as f:
 			config = yaml.safe_load(f)
 
 			for k in config.keys():
@@ -34,7 +34,7 @@ class Config:
 			raise FileNotFoundError(f"The repositories configuration file {repositories_path} does not exist.")
 
 		try:
-			with open(repositories_path, "r") as f:
+			with open(repositories_path, "r", encoding='utf-8') as f:
 				repositories = yaml.safe_load(f) or {}
 		except yaml.YAMLError as e:
 			raise yaml.YAMLError(f"Error parsing YAML file: {e}")

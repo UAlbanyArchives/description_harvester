@@ -15,7 +15,7 @@ pip install description_harvester
 
 First, you need to configure ArchivesSnake by creating a `~/.archivessnake.yml`file with your API credentials as detailed by the [ArchivesSnake configuration docs](https://github.com/archivesspace-labs/ArchivesSnake#configuration).
 
-Next, you also need a `~/.description_harvester/config.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args.
+Next, you also need a `~/.description_harvester/config.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args. description_harvester reads your `config.yml` as utf-8, so if you're creating this file in a Windows environment you should convert it to utf-8.
 
 ```yml
 solr_url: http://127.0.0.1:8983/solr
@@ -31,6 +31,8 @@ By default, when reading from ArchivesSpace, description harvester will use the 
 To enable the --repo argument, place a copy of your ArcLight repositories.yml file as `~/.description_harvester/repositories.yml`. You can then use `harvest --id mss001 --repo slug` to index using the slug from repositories.yml. This will overrite the ArchivesSpace repository name.
 
 There is also the option do customize this with a [plugin](https://github.com/UAlbanyArchives/description_harvester_plugins/blob/main/repo_plugin.py).
+
+**Encoding note:** While ArcLight does not explicitly read `repositories.yml` as utf-8, its Rails stack means that you're likely reading it in a utf-8 (non-Windows) environment. Since description_harvester enables you to index from a Windows machine, it expects your `~/.description_harvester/repositories.yml` file to be utf-8.
 
 ## Indexing from ArchivesSpace API to Arclight
 
