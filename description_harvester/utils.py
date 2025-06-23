@@ -76,7 +76,7 @@ def write2disk(object, collection_id):
 	test_path.mkdir(parents=True, exist_ok=True)
 	out_path = test_path / f"{collection_id}.json"
 
-	with open(out_path, "w", "utf-8") as file:
+	with open(out_path, "w", encoding='utf-8') as file:
 		json.dump(object.to_dict(), file, indent=4)
 
 def get_cache_key(identifier):
@@ -111,7 +111,7 @@ def save_to_cache(identifier, data):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     
     # Save the data along with a timestamp
-    with open(CACHE_DIR / key, "w", "utf-8") as f:
+    with open(CACHE_DIR / key, "w", encoding='utf-8') as f:
         json.dump({
             "timestamp": int(time.time()),
             "data": data
@@ -122,7 +122,7 @@ def load_from_cache(identifier, max_age_seconds=86400):
     path = CACHE_DIR / key
     
     if path.exists():
-        with open(path, "r", "utf-8") as f:
+        with open(path, "r", encoding='utf-8') as f:
             cached = json.load(f)
             age = time.time() - cached["timestamp"]
             if age < max_age_seconds:
