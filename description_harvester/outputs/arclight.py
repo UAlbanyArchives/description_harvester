@@ -35,8 +35,8 @@ class Arclight():
         solrDocument.total_component_count_is = int(total_component_count)
         
         if len(has_online_content) > 0:
-            if solrDocument.id in has_online_content:
-                solrDocument.has_online_content_ssim = ["Contains online items"]
+            #if solrDocument.id in has_online_content:
+            #    solrDocument.has_online_content_ssim = ["Contains online items"]
             solrDocument = self.mark_online_content(solrDocument, has_online_content)
             solrDocument.online_item_count_is = int(online_item_count)
 
@@ -45,11 +45,11 @@ class Arclight():
     def mark_online_content(self, solrComponent, has_online_content):
         
         for component in solrComponent.components:
-            if component.ref_ssi in has_online_content:
-                if len (component.has_online_content_ssim) == 0:
-                    component.has_online_content_ssim = ["Contains online items"]
-            else:
-                component.has_online_content_ssim = ["No online items"]
+            #if component.ref_ssi in has_online_content:
+            #    if len (component.has_online_content_ssim) == 0:
+            #        component.has_online_content_ssim = ["Contains online items"]
+            #else:
+            #    component.has_online_content_ssim = ["No online items"]
             childComponent = self.mark_online_content(component, has_online_content)
 
         return solrComponent
@@ -469,7 +469,8 @@ class Arclight():
         
         if has_dao:
             online_item_count += 1
-            solrDocument.has_online_content_ssim = ["Online access"]
+            #solrDocument.has_online_content_ssim = ["Online access"]
+            solrDocument.has_online_content_ssim = ["View only online content"]
             has_online_content.add(record.id.replace(".", "-"))
             has_online_content.update(parents)
 
