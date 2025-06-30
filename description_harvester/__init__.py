@@ -22,6 +22,7 @@ def parse_args(args=None):
     parser.add_argument('--delete', nargs="+")
     parser.add_argument('--updated', action="store_true")
     parser.add_argument('--new', action="store_true")
+    parser.add_argument('--all', action="store_true")
     parser.add_argument('--hour', action="store_true")
     parser.add_argument('--today', action="store_true")
     parser.add_argument('--solr_url', nargs=1)
@@ -70,7 +71,7 @@ def harvest(args=None):
     start_time = time.time()
     print(f"\n------------------------------\nRan at: {datetime.fromtimestamp(start_time)}")
 
-    if not (args.id or args.new or args.updated or args.uri or args.hour or args.today or args.delete):
+    if not (args.id or args.new or args.all or args.updated or args.uri or args.hour or args.today or args.delete):
         print("No action requested, need a collection ID or --updated or --new")
         return
 
@@ -104,6 +105,11 @@ def harvest(args=None):
                 doc_count += 1
             else:
                 print(f"\tSkipping {cid} (already exists)")
+
+    if args.all:
+        for cid in aspace.all_resource_ids():
+            index_record(args, arclight, aspace, cid)
+            doc_count += 1
 
     if args.id:
         for cid in args.id:
