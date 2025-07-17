@@ -35,8 +35,9 @@ class Arclight():
         solrDocument.total_component_count_is = int(total_component_count)
         
         if len(has_online_content) > 0:
-            #if solrDocument.id in has_online_content:
-            #    solrDocument.has_online_content_ssim = ["Contains online items"]
+            if solrDocument.id in has_online_content:
+                #solrDocument.has_online_content_ssim = ["Contains online items"]
+                solrDocument.has_online_content_ssim = ["View only online content"]
             solrDocument = self.mark_online_content(solrDocument, has_online_content)
             solrDocument.online_item_count_is = int(online_item_count)
 
