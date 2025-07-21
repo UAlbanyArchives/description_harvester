@@ -69,7 +69,8 @@ class Component(models.Base):
     genreform = fields.ListField(str)
     places = fields.ListField(str)
 
-    # notes
+    # Notes
+    # Notes are list of paragraphs as strings that contain HTML markup
     abstract = fields.ListField(str)
     abstract_heading = fields.StringField()
     accessrestrict = fields.ListField(str)

@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from lxml import etree
 from typing import List
@@ -105,6 +106,27 @@ class ArchivesSpace():
             return [line.strip() for line in text.splitlines() if line.strip()]
 
 
+    def split_into_paragraphs(self, text: str) -> List[str]:
+        """
+        Splits a long string into paragraphs by detecting blank lines or linebreaks with indentation,
+        while preserving inline markup and stripping extra whitespace.
+
+        Args:
+            text (str): The input text with optional HTML-like inline tags.
+
+        Returns:
+            List[str]: A list of cleaned paragraphs.
+        """
+        # Normalize line endings
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+        # Collapse multiple blank lines and split into paragraph blocks
+        paragraphs = re.split(r'\n\s*\n+', text)
+
+        # Strip leading/trailing whitespace from each paragraph and remove empty ones
+        return [para.strip() for para in paragraphs if para.strip()]
+
+    
     def read(self, id):
         """
         Reads a resource and its associated archival objects
@@ -342,7 +364,8 @@ class ArchivesSpace():
                     for subnote in note["subnotes"]:
                         if subnote['publish'] == True:
                             if "content" in subnote.keys():
-                                note_text.extend(self.extract_xpath_text(subnote["content"]))
+                                #note_text.extend(self.extract_xpath_text(subnote["content"]))
+                                note_text.extend(self.split_into_paragraphs(subnote["content"]))
                             elif subnote['jsonmodel_type'] == "note_chronology":
                                 events = []
                                 for event in subnote["items"]:
