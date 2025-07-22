@@ -376,8 +376,6 @@ class Arclight():
                 if note == "acqinfo":
                     setattr(solrDocument, note + "_ssim", note_text)
                 else:
-                    #if note == "scopecontent":
-                    #    print (note_text) 
                     stripped_text = [self.strip_text(item) for item in note_text]
                     setattr(solrDocument, note + "_tesim", stripped_text)
                     replaced_text = [self.replace_emph_tags(item) for item in note_text]
