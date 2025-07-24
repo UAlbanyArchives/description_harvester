@@ -24,7 +24,27 @@ class Arclight():
         self.solr = solr
         self.repository_name = repository_name
         self.metadata_config = metadata_config
-        
+
+        # Check if add_hashed_id is configured in solrconfig.xml for blacklight_dynamic_sitemap
+        dummy_doc = {"id": "__probe__"}
+        try:
+            self.solr._send_request(
+                method='POST',
+                path='/update?update.chain=add_hashed_id&commitWithin=0',
+                body=json.dumps([dummy_doc]),
+                headers={'Content-Type': 'application/json'}
+            )
+            # Delete dummy doc
+            self.solr._send_request(
+                method='POST',
+                path='/update',
+                body=json.dumps({'delete': {'id': '__probe__'}}),
+                headers={'Content-Type': 'application/json'}
+            )
+            self.has_add_hashed_id_chain = True
+        except Exception as e:
+            self.has_add_hashed_id_chain = False
+
 
     def convert(self, record):
 
@@ -494,4 +514,13 @@ class Arclight():
     def add(self, collection):
 
         print ("\tadding data to Solr...")
-        self.solr.add([collection.to_dict()])
+        if self.has_add_hashed_id_chain:
+            self.solr._send_request(
+                method='POST',
+                path='/update?update.chain=add_hashed_id',
+                body=json.dumps([collection.to_dict()]),
+                headers={'Content-Type': 'application/json'}
+            )
+        else:
+            self.solr.add([collection.to_dict()])
+        

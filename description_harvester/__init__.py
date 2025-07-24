@@ -82,7 +82,7 @@ def harvest(args=None):
         handle_deletions(solr_url, solr_core, args.delete)
         return
 
-    solr = pysolr.Solr(f"{solr_url}/{solr_core}", timeout=600)
+    solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=False, timeout=600)
     solr.ping()
 
     repository_name = Config.read_repositories(args.repo) if args.repo else None
