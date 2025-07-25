@@ -33,6 +33,7 @@ class SolrCollection(models.Base):
         return filter_empty_fields(to_struct_with_custom_fields(self))
 
     id = fields.StringField(required=True)
+    hashed_id_ssi = fields.StringField()
     unitid_ssm = fields.ListField(str)
     unitid_tesim = fields.ListField(str)
     title_ssm = fields.ListField(str)

@@ -2,6 +2,7 @@ import re
 import copy
 import json
 import pysolr
+import hashlib
 from bs4 import BeautifulSoup
 from description_harvester.utils import extract_years
 from description_harvester.models.arclight import SolrCollection, SolrComponent
@@ -24,26 +25,6 @@ class Arclight():
         self.solr = solr
         self.repository_name = repository_name
         self.metadata_config = metadata_config
-
-        # Check if add_hashed_id is configured in solrconfig.xml for blacklight_dynamic_sitemap
-        dummy_doc = {"id": "__probe__"}
-        try:
-            self.solr._send_request(
-                method='POST',
-                path='/update?update.chain=add_hashed_id&commitWithin=0',
-                body=json.dumps([dummy_doc]),
-                headers={'Content-Type': 'application/json'}
-            )
-            # Delete dummy doc
-            self.solr._send_request(
-                method='POST',
-                path='/update',
-                body=json.dumps({'delete': {'id': '__probe__'}}),
-                headers={'Content-Type': 'application/json'}
-            )
-            self.has_add_hashed_id_chain = True
-        except Exception as e:
-            self.has_add_hashed_id_chain = False
 
 
     def convert(self, record):
@@ -316,6 +297,9 @@ class Arclight():
             solrDocument.repository_ssm = [record.repository]
             solrDocument.repository_ssim = [record.repository]
 
+        # hashed_id_ssi for dynamic sitemaps
+        solrDocument.hashed_id_ssi = hashed = hashlib.md5(solrDocument.id.encode('utf-8')).hexdigest()
+
         extents = []
         for extent in record.extents:
             extents.append(f"{extent.number} {extent.unit}")
@@ -514,13 +498,5 @@ class Arclight():
     def add(self, collection):
 
         print ("\tadding data to Solr...")
-        if self.has_add_hashed_id_chain:
-            self.solr._send_request(
-                method='POST',
-                path='/update?update.chain=add_hashed_id',
-                body=json.dumps([collection.to_dict()]),
-                headers={'Content-Type': 'application/json'}
-            )
-        else:
-            self.solr.add([collection.to_dict()])
+        self.solr.add([collection.to_dict()])
         
