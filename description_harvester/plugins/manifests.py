@@ -11,29 +11,29 @@ class MyPlugin(Plugin):
 
 
 	def extract_lang_value(self, obj, allow_multivalued=False):
-	    """
-	    Extracts language-specific value(s) from a dict, list, or string, preferring English ('en').
+		"""
+		Extracts language-specific value(s) from a dict, list, or string, preferring English ('en').
 
-	    Args:
-	        obj: A dictionary with language keys, a list of values, or a plain string.
-	        allow_multivalued (bool): If True, allows returning a list of values. If False, always returns a string.
+		Args:
+			obj: A dictionary with language keys, a list of values, or a plain string.
+			allow_multivalued (bool): If True, allows returning a list of values. If False, always returns a string.
 
-	    Returns:
-	        str or list: A string or list of strings based on allow_multivalued.
-	    """
-	    if isinstance(obj, dict):
-	        values = obj.get("en") or next(iter(obj.values()), [])
-	        if not isinstance(values, list):
-	            values = [values]
-	        return values if allow_multivalued else values[0] if values else ""
+		Returns:
+			str or list: A string or list of strings based on allow_multivalued.
+		"""
+		if isinstance(obj, dict):
+			values = obj.get("en") or next(iter(obj.values()), [])
+			if not isinstance(values, list):
+				values = [values]
+			return values if allow_multivalued else values[0] if values else ""
 
-	    elif isinstance(obj, list):
-	        return obj if allow_multivalued else obj[0] if obj else ""
+		elif isinstance(obj, list):
+			return obj if allow_multivalued else obj[0] if obj else ""
 
-	    elif isinstance(obj, str):
-	        return [obj] if allow_multivalued else obj
+		elif isinstance(obj, str):
+			return [obj] if allow_multivalued else obj
 
-	    return [] if allow_multivalued else ""
+		return [] if allow_multivalued else ""
 
 	def read_txt_content(self, txt_url):
 		"""
@@ -163,103 +163,118 @@ class MyPlugin(Plugin):
 			dao: The updated digital object record with additions from the manifest.
 		"""
 
-		# Start by checking if the identifier is a manifest URL
-		if not "manifest.json" in dao.identifier and not "https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]=" in dao.identifier:
+		# Address local file version data issues
+		# This block should be removed once our ASpace data is updated
+		if dao.identifier.lower().startswith("https://archives.albany.edu/concern/"):
+			dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
+		elif dao.identifier.lower().startswith("https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]="):
+			dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
+		elif "library.albany.edu/speccoll/findaids/eresources/dao/" in dao.identifier.lower():
+			dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
+
+		# Initialize metadata if it's None
+		if dao.metadata is None:
+			dao.metadata = {}
+
+		if dao.type == "web_archive":
+			#print (dao.action)
+			#print (dao.identifier)
 			dao.action = "link"
+			dao.rights_statement = "https://rightsstatements.org/vocab/InC-EDU/1.0/"
 		else:
-			# Fetch the manifest
-			response = requests.get(dao.identifier)
-			if response.status_code != 200:
-				print (f"Failed to fetch manifest: {response.status_code}, linking instead of embeding.")
+			# assume IIIF manifest because of our bad data
+
+			# Start by checking if the identifier is a manifest URL
+			if not "manifest.json" in dao.identifier and not "https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]=" in dao.identifier:
 				dao.action = "link"
-				#raise ValueError(f"Failed to fetch manifest: {response.status_code}")
 			else:
-				dao.action = "embed"
-				dao.text_content = None
-			
-				# Initialize metadata if it's None
-				if dao.metadata is None:
-					dao.metadata = {}
+				# Fetch the manifest
+				response = requests.get(dao.identifier)
+				if response.status_code != 200:
+					print (f"Failed to fetch manifest: {response.status_code}, linking instead of embeding.")
+					dao.action = "link"
+					#raise ValueError(f"Failed to fetch manifest: {response.status_code}")
+				else:
+					dao.action = "embed"
+					dao.text_content = None
 
-				# Parse the manifest
-				manifest = response.json()
-				context = manifest.get("@context", "")
-				if isinstance(context, list):
-					context = context[0]
+					# Parse the manifest
+					manifest = response.json()
+					context = manifest.get("@context", "")
+					if isinstance(context, list):
+						context = context[0]
 
-				# Determine IIIF version (V3 or V2)
-				is_v3 = "presentation/3" in context
-				is_v2 = "presentation/2" in context or "@type" in manifest and manifest["@type"] == "sc:Manifest"
+					# Determine IIIF version (V3 or V2)
+					is_v3 = "presentation/3" in context
+					is_v2 = "presentation/2" in context or "@type" in manifest and manifest["@type"] == "sc:Manifest"
 
-				# Handle V3 Manifest
-				if is_v3:
-					dao.type = 'application/ld+json;profile="http://iiif.io/api/presentation/3/context.json"'
-					canvases = manifest.get("items", [])
-					if canvases:
-						canvas = canvases[0]
-						thumbs = canvas.get("thumbnail", [])
-						if isinstance(thumbs, list) and thumbs:
-							dao.thumbnail_href = thumbs[0].get("id") or thumbs[0].get("@id")
-
-					# Check for manifest-level renderings first, then canvas annotations if needed
-					dao.text_content = self.check_renderings(manifest.get("rendering", []))
-					if not dao.text_content:
-						dao.text_content = self._extract_text_from_canvas(canvases)
-
-					# Set rights metadata
-					dao.rights_statement = manifest.get("rights")
-
-					# Add metadata to dao
-					for entry in manifest.get("metadata", []):
-						label = self.extract_lang_value(entry.get("label", ""))
-						value = self.extract_lang_value(entry.get("value", ""), allow_multivalued=True)
-
-						label_name = label.lower()
-						target_fields = {"subjects", "creators"}
-						if label_name in target_fields:
-						    normalized_value = [value] if isinstance(value, str) else (
-						        value if isinstance(value, list) else [str(value)]
-						    )
-						    setattr(dao, label_name, normalized_value)
-						else:
-						    dao.metadata[label] = value
-
-				# Handle V2 Manifest
-				elif is_v2:
-					dao.type = 'application/ld+json;profile="http://iiif.io/api/presentation/2/context.json"'
-					sequences = manifest.get("sequences", [])
-					if sequences:
-						canvases = sequences[0].get("canvases", [])
+					# Handle V3 Manifest
+					if is_v3:
+						canvases = manifest.get("items", [])
 						if canvases:
 							canvas = canvases[0]
-							thumbs = canvas.get("thumbnail")
-							if isinstance(thumbs, dict):
-								dao.thumbnail_href = thumbs.get("@id")
-							elif isinstance(thumbs, str):
-								dao.thumbnail_href = thumbs
+							thumbs = canvas.get("thumbnail", [])
+							if isinstance(thumbs, list) and thumbs:
+								dao.thumbnail_href = thumbs[0].get("id") or thumbs[0].get("@id")
 
-							# Check for manifest-level renderings first, then canvas annotations if needed
-							dao.text_content = self.check_renderings(manifest.get("rendering", []))
-							if not dao.text_content:
-								dao.text_content = self._extract_text_from_canvas(canvases)
+						# Check for manifest-level renderings first, then canvas annotations if needed
+						dao.text_content = self.check_renderings(manifest.get("rendering", []))
+						if not dao.text_content:
+							dao.text_content = self._extract_text_from_canvas(canvases)
 
-					# Set rights metadata for V2 manifest
-					dao.rights_statement = manifest.get("license") or manifest.get("rights")
+						# Set rights metadata
+						dao.rights_statement = manifest.get("rights")
 
-					# Add metadata to dao (v2)
-					for entry in manifest.get("metadata", []):
-						label = entry.get("label", "")
-						value = entry.get("value", "")
+						# Add metadata to dao
+						for entry in manifest.get("metadata", []):
+							label = self.extract_lang_value(entry.get("label", ""))
+							value = self.extract_lang_value(entry.get("value", ""), allow_multivalued=True)
 
-						if label.lower() == "subjects":
-							if isinstance(value, str):
-								dao.subjects = [value]
-							elif isinstance(value, list):
-								dao.subjects = value
+							label_name = label.lower()
+							target_fields = {"subjects", "creators"}
+							if label_name in target_fields:
+								normalized_value = [value] if isinstance(value, str) else (
+									value if isinstance(value, list) else [str(value)]
+								)
+								setattr(dao, label_name, normalized_value)
 							else:
-								dao.subjects = [str(value)]
-						else:
-							dao.metadata[label] = value
+								dao.metadata[label] = value
+
+					# Handle V2 Manifest
+					elif is_v2:
+						sequences = manifest.get("sequences", [])
+						if sequences:
+							canvases = sequences[0].get("canvases", [])
+							if canvases:
+								canvas = canvases[0]
+								thumbs = canvas.get("thumbnail")
+								if isinstance(thumbs, dict):
+									dao.thumbnail_href = thumbs.get("@id")
+								elif isinstance(thumbs, str):
+									dao.thumbnail_href = thumbs
+
+								# Check for manifest-level renderings first, then canvas annotations if needed
+								dao.text_content = self.check_renderings(manifest.get("rendering", []))
+								if not dao.text_content:
+									dao.text_content = self._extract_text_from_canvas(canvases)
+
+						# Set rights metadata for V2 manifest
+						dao.rights_statement = manifest.get("license") or manifest.get("rights")
+
+						# Add metadata to dao (v2)
+						for entry in manifest.get("metadata", []):
+							label = entry.get("label", "")
+							value = entry.get("value", "")
+
+							if label.lower() == "subjects":
+								if isinstance(value, str):
+									dao.subjects = [value]
+								elif isinstance(value, list):
+									dao.subjects = value
+								else:
+									dao.subjects = [str(value)]
+							else:
+								dao.metadata[label] = value
 
 
 		# Return the updated dao object

@@ -1,12 +1,12 @@
 import os
 import re
 import sys
+import langcodes
 from lxml import etree
 from typing import List
 from io import StringIO
 from typing import List
 from pathlib import Path
-from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
 from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
@@ -313,11 +313,11 @@ class ArchivesSpace():
 
         # languages
         for language in apiObject["lang_materials"]:
-            if "language_and_script" in language.keys():
-                lang_code = language['language_and_script']['language']
-                lang = languages.get(bibliographic=lang_code.lower())
-                record.languages.append(lang.name)
-            for lang_note in language['notes']:
+            if "language_and_script" in language:
+                lang_code = language['language_and_script']['language'].lower()
+                lang = langcodes.Language.get(lang_code)
+                record.languages.append(lang.language_name())
+            for lang_note in language.get('notes', []):
                 record.languages.extend(lang_note['content'])
 
         # Agents and subjects could be a lot more detailed with their own objects
@@ -417,21 +417,14 @@ class ArchivesSpace():
                                     dao = DigitalObject()
                                     dao.identifier = file_version.get("file_uri", None)
                                     dao.label = digital_object.get("title", "")
-                                    
-                                    # This block needs to be removed once our ASpace data is updated
-                                    if dao.identifier.lower().startswith("https://archives.albany.edu/concern/"):
-                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
-                                    elif dao.identifier.lower().startswith("https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]="):
-                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
-                                    elif "library.albany.edu/speccoll/findaids/eresources/dao/" in dao.identifier.lower():
-                                        dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
+                                    dao.type = digital_object.get("digital_object_type", "unset")
+                                    dao.action = file_version.get("xlink_show_attribute", "link")
 
                                     for plugin in self.plugins:
                                         updated_dao = plugin.read_data(dao)
                                         if updated_dao:
                                             dao = updated_dao
 
-                                    
                                     record.digital_objects.append(dao)
                             else:
                                 print (f"WARN: Digital Object has unpublished file version and was not indexed: {digital_object}")
