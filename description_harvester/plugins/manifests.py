@@ -204,6 +204,7 @@ class MyPlugin(Plugin):
                                 metadata = yaml.safe_load(r_meta.text)
                                 dao.metadata["resource_type"] = metadata.get("resource_type", None)
                                 dao.metadata["date_uploaded"] = metadata.get("date_uploaded", None)
+                                dao.metadata["replay_content"] = content_url
 
                                 if metadata["license"].lower().strip() == "unknown":
                                     dao.rights_statement = metadata.get("rights_statement", None)
@@ -218,7 +219,17 @@ class MyPlugin(Plugin):
 
                                 expected_url = True  # mark as successful
 
-                                # Adds the thumnail only if present
+                                try:
+                                    pdf_filename = metadata.get("replay_pdf", None)
+                                    if pdf_filename:
+                                        pdf_url = urlunparse(parsed._replace(path=f"{base_path}/pdf/{pdf_filename}"))
+                                        r_pdf = requests.head(pdf_url, timeout=5)
+                                        if r_pdf.status_code == 200:
+                                            dao.metadata["replay_pdf"] = pdf_url
+                                except requests.RequestException:
+                                    pass
+
+                                # Adds the thumbnail only if present
                                 try:
                                     r_thumb = requests.head(thumbnail_url, timeout=5)
                                     if r_thumb.status_code == 200:
