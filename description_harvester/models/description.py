@@ -39,7 +39,10 @@ class DigitalObject(models.Base):
     access_condition = fields.StringField()
     thumbnail_href = fields.StringField()
     rights_statement = fields.StringField()
-    metadata = fields.ListField(dict)
+    metadata = fields.DictField()
+    subjects = fields.ListField(str)
+    creators = fields.ListField(str)
+    text_content = fields.StringField()
 
 class Component(models.Base):
 
@@ -66,7 +69,8 @@ class Component(models.Base):
     genreform = fields.ListField(str)
     places = fields.ListField(str)
 
-    # notes
+    # Notes
+    # Notes are list of paragraphs as strings that contain HTML markup
     abstract = fields.ListField(str)
     abstract_heading = fields.StringField()
     accessrestrict = fields.ListField(str)

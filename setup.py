@@ -32,7 +32,7 @@ setuptools.setup(
         "archivessnake>=0.9.1,<1",
         "beautifulsoup4>=4.12.0",
         "black>=22.1.0",
-        "iso-639>=0.4.5,<1",
+        "langcodes==3.5.0,<4",
         "lxml>=5.0.0",
         "pysolr>=3.9.0,<4",
         "pyyaml>=6.0,<7",

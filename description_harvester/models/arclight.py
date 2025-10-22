@@ -1,4 +1,4 @@
-from .model_utils import filter_empty_fields
+from .model_utils import filter_empty_fields, to_struct_with_custom_fields
 from jsonmodels import models, fields, errors, validators
 
 """
@@ -8,13 +8,32 @@ to be POSTed to Solr.
 
 class SolrCollection(models.Base):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Initialize custom fields container
+        self.custom_fields = {}
+
+    def add_custom_field(self, field_name, value):
+        """Dynamically add a custom field."""
+        self.custom_fields[field_name] = value
+
     def to_dict(self):
         """
-        Convert the model instance to a dictionary with empty fields removed.
+        Converts the SolrCollection instance into a cleaned dictionary with custom fields included as attibutes.
+        
+        This includes:
+        - Base fields from `to_struct()`
+        - Dynamically added `custom_fields` (neccessary after because they're not specified individualy)
+        - Recursively processed nested `components` (if present)
+        - Removal of any empty fields (None, '', [], {})
+        
+        Returns:
+            dict: A cleaned and complete dictionary representation of the object.
         """
-        return filter_empty_fields(self.to_struct())
+        return filter_empty_fields(to_struct_with_custom_fields(self))
 
     id = fields.StringField(required=True)
+    hashed_id_ssi = fields.StringField()
     unitid_ssm = fields.ListField(str)
     unitid_tesim = fields.ListField(str)
     title_ssm = fields.ListField(str)
@@ -132,7 +151,6 @@ class SolrCollection(models.Base):
     note_tesim = fields.ListField(str)
     note_html_tesm = fields.ListField(str)
 
-
     names_coll_ssim = fields.ListField(str)
     names_ssim = fields.ListField(str)
     corpname_ssim = fields.ListField(str)
@@ -157,17 +175,16 @@ class SolrCollection(models.Base):
     total_component_count_is = fields.IntField()
     online_item_count_is = fields.IntField()
 
-    # I guess collections can have representative DAOs
-    href_sim = fields.StringField()
-    label_ssm = fields.StringField()
-    identifier_sim = fields.StringField()
-    is_representative_sim = fields.StringField()
-    filename_sim = fields.StringField()
-    mime_type_sim = fields.StringField()
-    #metadata = fields.ListField(dict)
-    thumbnail_href_sim = fields.StringField()
-    rights_statement_ssm = fields.StringField()
-    #content_ssm = fields.StringField()
+    # From DAO records
+    dado_identifier_ssm = fields.StringField()
+    dado_label_tesim = fields.StringField()
+    thumbnail_path_ss = fields.StringField()
+    dado_type_ssm = fields.StringField()
+    dado_action_ssm = fields.StringField()
+    dado_rights_statement_ssim = fields.ListField(str)
+    dado_subjects_ssim = fields.ListField(str)
+    content_teim = fields.StringField()
+
     
 
 class SolrComponent(SolrCollection):

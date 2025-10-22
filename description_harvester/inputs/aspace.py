@@ -1,11 +1,12 @@
 import os
+import re
 import sys
+import langcodes
 from lxml import etree
 from typing import List
 from io import StringIO
 from typing import List
 from pathlib import Path
-from iso639 import languages
 from asnake.client import ASnakeClient
 import asnake.logging as logging
 from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
@@ -34,6 +35,8 @@ class ArchivesSpace():
             self.repo_name = repo_response.json().get('name', 'Unknown')
         else:
             raise Exception(f"Failed to fetch repository {self.repo} data from ArchivesSpace. Status code: {repo_response.status_code}")
+
+        self.current_id_0 = ""
 
         plugin_basedir = os.environ.get("DESCRIPTION_HARVESTER_PLUGIN_DIR", None)
         # Plugins are loaded from:
@@ -103,6 +106,27 @@ class ArchivesSpace():
             return [line.strip() for line in text.splitlines() if line.strip()]
 
 
+    def split_into_paragraphs(self, text: str) -> List[str]:
+        """
+        Splits a long string into paragraphs by detecting blank lines or linebreaks with indentation,
+        while preserving inline markup and stripping extra whitespace.
+
+        Args:
+            text (str): The input text with optional HTML-like inline tags.
+
+        Returns:
+            List[str]: A list of cleaned paragraphs.
+        """
+        # Normalize line endings
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+        # Collapse multiple blank lines and split into paragraph blocks
+        paragraphs = re.split(r'\n\s*\n+', text)
+
+        # Strip leading/trailing whitespace from each paragraph and remove empty ones
+        return [para.strip() for para in paragraphs if para.strip()]
+
+    
     def read(self, id):
         """
         Reads a resource and its associated archival objects
@@ -140,6 +164,7 @@ class ArchivesSpace():
                     if repo_name:
                         self.repo_name = repo_name
 
+                self.current_id_0 = eadid
                 record = self.readToModel(resource, eadid, resource['uri'])
 
                 return record
@@ -170,6 +195,7 @@ class ArchivesSpace():
                 if repo_name:
                     self.repo_name = repo_name
             
+            self.current_id_0 = eadid
             record = self.readToModel(resource, eadid, resource['uri'])
             
             return record
@@ -234,7 +260,8 @@ class ArchivesSpace():
         record = Component()
         
         #record.title = apiObject["title"]
-        record.title = apiObject.get("title", None)
+        record.title = apiObject.get("title", "").replace("<emph>", "<i>").replace("</emph>", "</i>")
+
         record.title_filing_ssi = apiObject.get("finding_aid_filing_title", None)
         record.level = apiObject["level"]
         record.repository = self.repo_name
@@ -286,11 +313,11 @@ class ArchivesSpace():
 
         # languages
         for language in apiObject["lang_materials"]:
-            if "language_and_script" in language.keys():
-                lang_code = language['language_and_script']['language']
-                lang = languages.get(bibliographic=lang_code.lower())
-                record.languages.append(lang.name)
-            for lang_note in language['notes']:
+            if "language_and_script" in language:
+                lang_code = language['language_and_script']['language'].lower()
+                lang = langcodes.Language.get(lang_code)
+                record.languages.append(lang.language_name())
+            for lang_note in language.get('notes', []):
                 record.languages.extend(lang_note['content'])
 
         # Agents and subjects could be a lot more detailed with their own objects
@@ -337,7 +364,8 @@ class ArchivesSpace():
                     for subnote in note["subnotes"]:
                         if subnote['publish'] == True:
                             if "content" in subnote.keys():
-                                note_text.extend(self.extract_xpath_text(subnote["content"]))
+                                #note_text.extend(self.extract_xpath_text(subnote["content"]))
+                                note_text.extend(self.split_into_paragraphs(subnote["content"]))
                             elif subnote['jsonmodel_type'] == "note_chronology":
                                 events = []
                                 for event in subnote["items"]:
@@ -387,15 +415,19 @@ class ArchivesSpace():
                             if file_version.get("publish", False):
                                 if "file_uri" in file_version.keys():
                                     dao = DigitalObject()
-                                    dao.identifier = file_version["file_uri"]
-                                    dao.label = digital_object["title"]
+                                    dao.identifier = file_version.get("file_uri", None)
+                                    dao.label = digital_object.get("title", "")
+                                    dao.type = digital_object.get("digital_object_type", "unset")
+                                    dao.action = file_version.get("xlink_show_attribute", "link")
 
                                     for plugin in self.plugins:
                                         updated_dao = plugin.read_data(dao)
                                         if updated_dao:
-                                            dao = plugin.read_data(dao)
+                                            dao = updated_dao
 
                                     record.digital_objects.append(dao)
+                            else:
+                                print (f"WARN: Digital Object has unpublished file version and was not indexed: {digital_object}")
 
         
         recursive_level += 1
