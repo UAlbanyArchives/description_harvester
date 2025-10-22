@@ -1,11 +1,11 @@
 # description_harvester
-A tool for working with archival description for public access. description_harvester reads archival description into a [minimalist data model for public-facing archival description](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py) and then converts it to the [Arclight data model](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/arclight.py) and POSTs it into an Arclight Solr index using [PySolr](https://github.com/django-haystack/pysolr).
+A tool for working with archival description for public access. description_harvester reads archival description into a [minimalist data model for public-facing archival description](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py) and then converts it to the [ArcLight data model](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/ArcLight.py) and POSTs it into an ArcLight Solr index using [PySolr](https://github.com/django-haystack/pysolr).
 
-description_harvester is designed to be extensible and harvest archival description from a number of [sources](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/inputs). Currently the only available source harvests data from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake). It is possible in the future to add modules for EAD2002 and other sources. Its also possible to add additional [output modules](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/outputs) to serialize description to EAD or other formats in addition to or in replace of sending description to an Arclight Solr instance. This potential opens up new possibilities of managing description using low-barrier formats and tools.
+description_harvester is designed to be extensible and harvest archival description from a number of [sources](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/inputs). Currently the only available source harvests data from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake). It is possible in the future to add modules for EAD2002 and other sources. Its also possible to add additional [output modules](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/outputs) to serialize description to EAD or other formats in addition to or in replace of sending description to an ArcLight Solr instance. This potential opens up new possibilities of managing description using low-barrier formats and tools.
 
-The [main branch](https://github.com/UAlbanyArchives/description_harvester) is designed to be a drop-in replacement for the Arclight Traject indexer, while the [dao-indexing branch](https://github.com/UAlbanyArchives/description_harvester/tree/dao-indexing) tries to fully index digital objects from digital repositories and other sources, including item-level metadata fields, embedded text, OCR text, and transcriptions. 
+description_harvester is designed to be a drop-in replacement for the ArcLight Traject indexer. It also includes a [plugin](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/manifests.py) that attempts to recognized IIIF manifests included as file versions and uses manifests to fully index digital objects from digital repositories and other sources, including item-level metadata fields, embedded text, OCR text, and transcriptions. 
 
-This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs better error handling. Validation is also very minimal, but there is potential to add detailed validation with `jsonschema `.
+This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs tests and better error handling. Validation is also very minimal, but there is potential to add detailed validation with `jsonschema `.
 
 ## Installation
 
@@ -34,9 +34,9 @@ There is also the option do customize this with a [plugin](https://github.com/UA
 
 **Encoding note:** While ArcLight does not explicitly read `repositories.yml` as utf-8, its Rails stack means that you're likely reading it in a utf-8 (non-Windows) environment. Since description_harvester enables you to index from a Windows machine, it expects your `~/.description_harvester/repositories.yml` file to be utf-8.
 
-## Indexing from ArchivesSpace API to Arclight
+## Indexing from ArchivesSpace API to ArcLight
 
-Once description_harvester is set up, you can index from the ASpace API to Arclight using the `to-arclight` command.
+Once description_harvester is set up, you can index from the ASpace API to ArcLight using the `to-ArcLight` command.
 
 ### Index by id_0
 
@@ -66,7 +66,7 @@ Index collections not already in the index: `harvest --new`
 
 ### Deleting collections
 
-You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.arclight.edu/catalog/apap106`.
+You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.ArcLight.edu/catalog/apap106`.
 
 `harvest --delete apap101 apap301`
 
