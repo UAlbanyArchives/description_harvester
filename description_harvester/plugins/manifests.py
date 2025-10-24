@@ -165,15 +165,6 @@ class MyPlugin(Plugin):
             dao: The updated digital object record with additions from the manifest.
         """
 
-        # Address local file version data issues
-        # This block should be removed once our ASpace data is updated
-        if dao.identifier.lower().startswith("https://archives.albany.edu/concern/"):
-            dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
-        elif dao.identifier.lower().startswith("https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]="):
-            dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
-        elif "library.albany.edu/speccoll/findaids/eresources/dao/" in dao.identifier.lower():
-            dao.identifier = f"https://media.archives.albany.edu/{self.current_id_0}/{apiObject['ref_id']}/manifest.json"
-
         # Initialize metadata if it's None
         if dao.metadata is None:
             dao.metadata = {}
