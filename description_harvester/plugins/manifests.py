@@ -172,7 +172,6 @@ class MyPlugin(Plugin):
         if dao.type == "web_archive":
             # Needs local custom handing for web archives since theres no established way to serve via a manifest
             expected_url = False
-            dao.action = "link"
             if dao.identifier.strip().lower().startswith("https://media.archives.albany.edu/"):
                 parsed = urlparse(dao.identifier.strip())
                 parts = parsed.path.strip("/").split("/")
