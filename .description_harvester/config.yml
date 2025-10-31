@@ -1,0 +1,23 @@
+cache_expiration: 86400
+last_query: '1745864673'
+metadata:
+- ssi:
+  - date_uploaded
+- ssm:
+  - date_digitized
+  - extent
+- ssim:
+  - legacy_id
+  - resource_type
+  - coverage
+  - preservation_package
+  - creator
+  - contributor
+  - preservation_format
+  - source
+- tesm:
+  - processing_activity
+- tesim:
+  - description
+solr_core: arclight-1.6
+solr_url: https://solr.example.com:8984/solr

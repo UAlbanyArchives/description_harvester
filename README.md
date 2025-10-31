@@ -15,13 +15,39 @@ pip install description_harvester
 
 First, you need to configure ArchivesSnake by creating a `~/.archivessnake.yml`file with your API credentials as detailed by the [ArchivesSnake configuration docs](https://github.com/archivesspace-labs/ArchivesSnake#configuration).
 
-Next, you also need a `~/.description_harvester/config.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args. description_harvester reads your `config.yml` as utf-8, so if you're creating this file in a Windows environment you should convert it to utf-8.
+Next, you also need a `~/.description_harvester/config.yml` file that lists your Solr URL and the core you want to index to. These can also be overridden with args. description_harvester reads your `config.yml` as utf-8, so if you're creating this file in a Windows environment you should ensure its utf-8.
 
 ```yml
 solr_url: http://127.0.0.1:8983/solr
 solr_core: blacklight-core
 last_query: 0
 cache_expiration: 3600
+```
+
+### Adding custom digital object metadata
+
+You can also add custom digital object metadata fields by adding them to your `config.yml` under the Solr suffix you would like them to be indexed as. These fields must match [metadata fields in your IIIF manifests](https://iiif.io/api/cookbook/recipe/0029-metadata-anywhere/).
+
+```yml
+metadata:
+- ssi:
+  - date_uploaded
+- ssm:
+  - date_digitized
+  - extent
+- ssim:
+  - legacy_id
+  - resource_type
+  - coverage
+  - preservation_package
+  - creator
+  - contributor
+  - preservation_format
+  - source
+- tesm:
+  - processing_activity
+- tesim:
+  - description
 ```
 
 ### Repositories
