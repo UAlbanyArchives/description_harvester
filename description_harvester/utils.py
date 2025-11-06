@@ -66,9 +66,6 @@ def extract_years(date_string):
 
 # Caching to disk functionality
 
-CACHE_DIR = Path.home() / ".description_harvester" / "cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
 def write2disk(object, collection_id):
 	# takes a jsonmodel object and writes it to disk for testing
 
@@ -97,7 +94,7 @@ def component_from_dict(data):
 
     return component
 
-def save_to_cache(identifier, data):
+def save_to_cache(identifier, data, cache_dir):
     """
     Save the given jsonmodel data to a cache file.
     """
@@ -107,29 +104,33 @@ def save_to_cache(identifier, data):
     if hasattr(data, 'to_dict'):
         data = data.to_dict()  # Convert the jsonmodel object to a dictionary
     
-    # Ensure the cache directory exists
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Save the data along with a timestamp
-    with open(CACHE_DIR / key, "w", encoding='utf-8') as f:
-        json.dump({
-            "timestamp": int(time.time()),
-            "data": data
-        }, f)
+    if cache_dir:
+        # Expand ~ if present and ensure the cache directory exists
+        cache_dir = Path(cache_dir).expanduser()
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save the data along with a timestamp
+        with open(cache_dir / key, "w", encoding='utf-8') as f:
+            json.dump({
+                "timestamp": int(time.time()),
+                "data": data
+            }, f)
 
-def load_from_cache(identifier, max_age_seconds=86400):
+def load_from_cache(identifier, cache_dir, max_age_seconds=86400):
     key = get_cache_key(identifier)
-    path = CACHE_DIR / key
-    
-    if path.exists():
-        with open(path, "r", encoding='utf-8') as f:
-            cached = json.load(f)
-            age = time.time() - cached["timestamp"]
-            if age < max_age_seconds:
-                try:
-                    print (f"\tReading from cache: {path}")
-                    return component_from_dict(cached["data"])
-                except Exception as e:
-                    print(f"\tError rebuilding model: {e}")
-                    return None
-    return None
+    if cache_dir:
+        cache_dir = Path(cache_dir).expanduser()
+        path = cache_dir / key
+        
+        if path.exists():
+            with open(path, "r", encoding='utf-8') as f:
+                cached = json.load(f)
+                age = time.time() - cached["timestamp"]
+                if age < max_age_seconds:
+                    try:
+                        print (f"\tReading from cache: {path}")
+                        return component_from_dict(cached["data"])
+                    except Exception as e:
+                        print(f"\tError rebuilding model: {e}")
+                        return None
+        return None

@@ -51,11 +51,11 @@ def index_record(args, arclight, aspace, collection_id, use_uri=False):
     loader = aspace.read_uri if use_uri else aspace.read
     record = None
     if not args.no_cache:
-        record = load_from_cache(collection_id, config.cache_expiration)
+        record = load_from_cache(collection_id, config.cache_dir, config.cache_expiration)
     if not record:
         record = loader(collection_id)
         if record:
-            save_to_cache(collection_id, record)
+            save_to_cache(collection_id, record, config.cache_dir)
     if record:
         add_record(arclight, record, args.verbose)
 

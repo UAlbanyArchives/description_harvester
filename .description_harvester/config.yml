@@ -1,4 +1,5 @@
 cache_expiration: 86400
+cache_dir: "~/.description_harvester/cache"
 last_query: '1745864673'
 metadata:
 - ssi:
@@ -19,5 +20,5 @@ metadata:
   - processing_activity
 - tesim:
   - description
-solr_core: arclight-1.6
+solr_core: arclight
 solr_url: https://solr.example.com:8984/solr

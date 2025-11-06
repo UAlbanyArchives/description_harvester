@@ -98,7 +98,14 @@ You can delete one or more collections using the `--delete` argument. This uses 
 
 ## Caching
 
-description_harvester will cache collections from the ArchivesSpace API, storing them to `~/.description_harvester/cache` after they are converted to the description model. Cache time is set in seconds as `cache_expiration` in `~/.description_harvester/config.yml`. Thus, `cache_expiration: 3600` will use the cached data instead of the ArchivesSpace API for data less than 1 hour old.
+description_harvester will cache collections from the ArchivesSpace API, storing them by default to `~/.description_harvester/cache` after they are converted to the description model. Cache time is set in seconds as `cache_expiration` in `~/.description_harvester/config.yml`. Thus, `cache_expiration: 3600` will use the cached data instead of the ArchivesSpace API for data less than 1 hour old.
+
+You can override the cache path in config or turn caching off gobally with `cache_dir: false`.
+```yml
+cache_dir: "~/path/to/my_cache"
+cache_dir: "C:/Users/username/my_cache"
+cache_dir: false
+```
 
 ## Plugins
 
