@@ -59,6 +59,19 @@ class ArchivesSpace():
     def plugin_map(self):
         return Plugin.registry
 
+    def fetch(self, identifier, use_uri=False):
+        """
+        Return an ArchivesSpace record using either a resource ID or a URI.
+
+        Parameters
+        ----------
+        identifier : str
+            The ID or URI to retrieve.
+        use_uri : bool
+            If True, call `read_uri(identifier)`. If False, call `read(identifier)`.
+        """
+        loader = self.read_uri if use_uri else self.read
+        return loader(identifier)
 
     def extract_xpath_text(self, text: str) -> List[str]:
         """
@@ -262,7 +275,7 @@ class ArchivesSpace():
         #record.title = apiObject["title"]
         record.title = apiObject.get("title", "").replace("<emph>", "<i>").replace("</emph>", "</i>")
 
-        record.title_filing_ssi = apiObject.get("finding_aid_filing_title", None)
+        record.title_filing = apiObject.get("finding_aid_filing_title", None)
         record.level = apiObject["level"]
         record.repository = self.repo_name
 
