@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from lxml import etree
 from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
@@ -113,9 +114,14 @@ class EAD:
         if did is not None:
             record.dates = self._parse_dates(did, ns)
             record.extents = self._parse_extents(did, ns)
+            record.languages = self._parse_languages(did, ns)
+            # Parse notes that may be in the DID (abstract, physloc, materialspec, note)
+            self._parse_notes(elem, did, ns, record)
         
         # Parse child components recursively
+        # Children can be in either <dsc> (top-level) or directly nested within <c> elements
         if elem is not None:
+            # First check for <dsc> (top-level children)
             dsc = elem.find("ead:dsc", namespaces=ns)
             if dsc is not None:
                 for child in dsc:
@@ -134,8 +140,130 @@ class EAD:
                             recursive_level=recursive_level + 1
                         )
                         record.components.append(child_comp)
+            
+            # Also check for nested <c> elements (children within component)
+            for child in elem.findall("ead:c", namespaces=ns):
+                # Recursively call readToModel for nested child component
+                child_comp = self.readToModel(
+                    child,
+                    collection_id,
+                    repository,
+                    collection_name,
+                    ns,
+                    recursive_level=recursive_level + 1
+                )
+                record.components.append(child_comp)
         
         return record
+
+    def _extract_note_paragraphs(self, el, ns):
+        """Return a list of paragraph strings for a note element, excluding any <head> content.
+
+        Handles elements with <p> children or plain text mixed content.
+        Normalizes EAD formatting tags to HTML, preserving tag content.
+        """
+        if el is None:
+            return []
+
+        paragraphs = []
+        # If there are explicit <p> children, use those
+        p_els = el.findall("ead:p", namespaces=ns)
+        if p_els:
+            for p in p_els:
+                # Serialize to string to preserve inline tags like <emph>
+                text = etree.tostring(p, encoding='unicode', method='html')
+                # Remove the <p></p> wrapper that etree.tostring adds
+                if text.startswith('<p'):
+                    text = text[text.find('>')+1:]
+                if text.endswith('</p>'):
+                    text = text[:-4]
+                text = text.strip()
+                if text:
+                    text = self._normalize_ead_tags(text)
+                    paragraphs.append(text)
+            return paragraphs
+
+        # Otherwise, collect text of child elements excluding <head>
+        if el.text and el.text.strip():
+            text = el.text.strip()
+            text = self._normalize_ead_tags(text)
+            paragraphs.append(text)
+
+        for child in el:
+            try:
+                local = etree.QName(child).localname
+            except Exception:
+                local = None
+            if local == 'head':
+                # skip head content here
+                if child.tail and child.tail.strip():
+                    text = child.tail.strip()
+                    text = self._normalize_ead_tags(text)
+                    paragraphs.append(text)
+                continue
+            # Serialize child to preserve inline tags like <emph>
+            text = etree.tostring(child, encoding='unicode', method='html')
+            text = text.strip()
+            if text:
+                text = self._normalize_ead_tags(text)
+                paragraphs.append(text)
+
+        # Fallback: if nothing collected, use the element text content without head
+        if not paragraphs:
+            # remove head text if present
+            head = el.find("ead:head", namespaces=ns)
+            full = self._text_of(el) or ""
+            if head is not None:
+                head_text = self._text_of(head) or ""
+                full = full.replace(head_text, "", 1).strip()
+            if full:
+                full = self._normalize_ead_tags(full)
+                paragraphs = [full]
+
+        return paragraphs
+
+    def _parse_notes(self, elem, did, ns, record):
+        """Populate the Component `record` with note fields from DID and child elements.
+
+        Notes that typically live in the DID are parsed from `did` (e.g. abstract, physloc, materialspec, note).
+        Other notes are parsed from direct child elements of `elem`.
+        """
+        NOTE_FIELDS = [
+            'abstract', 'acqinfo', 'physloc', 'accessrestrict', 'accruals', 'altformavail', 'appraisal',
+            'arrangement', 'bibliography', 'bioghist', 'custodhist', 'fileplan', 'note', 'odd',
+            'originalsloc', 'otherfindaid', 'phystech', 'prefercite', 'processinfo',
+            'relatedmaterial', 'scopecontent', 'separatedmaterial', 'userestrict', 'materialspec'
+        ]
+
+        # First, handle DID-scoped notes
+        if did is not None:
+            for field in ('abstract', 'physloc', 'materialspec', 'note'):
+                el = did.find(f'ead:{field}', namespaces=ns)
+                if el is not None:
+                    paras = self._extract_note_paragraphs(el, ns)
+                    if paras:
+                        setattr(record, field, paras)
+                    # heading from head element if present
+                    head = el.find('ead:head', namespaces=ns)
+                    if head is not None:
+                        setattr(record, f"{field}_heading", self._text_of(head))
+
+        # Then handle top-level/child note elements under the component (not in DID)
+        for field in NOTE_FIELDS:
+            # skip ones already handled in DID above
+            if field in ('abstract', 'physloc', 'materialspec', 'note'):
+                continue
+            els = elem.findall(f'ead:{field}', namespaces=ns)
+            collected = []
+            for el in els:
+                # get heading if present (use first head)
+                head = el.find('ead:head', namespaces=ns)
+                if head is not None and not getattr(record, f"{field}_heading", None):
+                    setattr(record, f"{field}_heading", self._text_of(head))
+                paras = self._extract_note_paragraphs(el, ns)
+                collected.extend(paras)
+            if collected:
+                setattr(record, field, collected)
 
     def _text_of(self, el):
         """Extract text content from element."""
@@ -195,3 +323,71 @@ class EAD:
                     number, unit = txt, ""
                 exts.append(Extent(number=number.strip(), unit=unit.strip()))
         return exts
+
+    def _parse_languages(self, did_el, ns):
+        """Parse language elements from a DID element.
+
+        Looks for `<langmaterial>` elements under the DID and returns their text.
+        """
+        languages = []
+        if did_el is None:
+            return languages
+
+        # EAD commonly places languages under <langmaterial><language> elements
+        for langmat in did_el.findall("ead:langmaterial", namespaces=ns):
+            # Some EADs put <language> children; use the text of langmaterial itself
+            lang_text = self._text_of(langmat)
+            if lang_text:
+                # split if multiple languages appear concatenated by commas
+                parts = [p.strip() for p in lang_text.split(',') if p.strip()]
+                for p in parts:
+                    # remove trailing punctuation/newline characters
+                    clean = p.strip(" \n\r\t.,;:")
+                    if clean:
+                        languages.append(clean)
+
+        # Also look for direct <language> children of DID (less common)
+        for lang_el in did_el.findall("ead:language", namespaces=ns):
+            lt = self._text_of(lang_el)
+            if lt:
+                clean = lt.strip(" \n\r\t.,;:")
+                if clean:
+                    languages.append(clean)
+
+        return languages
+
+    def _normalize_ead_tags(self, text):
+        """Convert EAD formatting tags to HTML equivalents.
+
+        Converts:
+          <emph render="italic"> or <emph> -> <i>
+          <emph render="bold"> -> <b>
+          <emph render="underline"> -> <u>
+          <title> -> <i>
+          <ref> -> <a> (preserve href/xlink:href if present)
+        """
+        if not text:
+            return text
+
+        # Replace <emph render="italic"> and plain <emph> with <i>
+        text = re.sub(r'<emph\s+render="italic">', '<i>', text, flags=re.IGNORECASE)
+        text = re.sub(r'<emph>', '<i>', text, flags=re.IGNORECASE)
+        text = re.sub(r'</emph>', '</i>', text, flags=re.IGNORECASE)
+
+        # Replace <emph render="bold"> with <b>
+        text = re.sub(r'<emph\s+render="bold">', '<b>', text, flags=re.IGNORECASE)
+
+        # Replace <emph render="underline"> with <u>
+        text = re.sub(r'<emph\s+render="underline">', '<u>', text, flags=re.IGNORECASE)
+
+        # Replace <title> with <i> (archival titles typically italicized)
+        text = re.sub(r'<title>', '<i>', text, flags=re.IGNORECASE)
+        text = re.sub(r'</title>', '</i>', text, flags=re.IGNORECASE)
+
+        # Replace <ref> with <a> (preserve href or xlink:href if present)
+        text = re.sub(r'<ref\s+xlink:href="([^"]*)">', r'<a href="\1">', text, flags=re.IGNORECASE)
+        text = re.sub(r'<ref\s+linktype="([^"]*)">', r'<a>', text, flags=re.IGNORECASE)
+        text = re.sub(r'<ref>', '<a>', text, flags=re.IGNORECASE)
+        text = re.sub(r'</ref>', '</a>', text, flags=re.IGNORECASE)
+
+        return text
