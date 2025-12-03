@@ -255,6 +255,72 @@ def test_container_parsing_file_component_apap101():
     # Type heuristics
     assert cont.top_container in ("box", "oversized", None)  # oversized is allowed; some EADs use non-standard labels
     assert cont.sub_container in ("folder", "file")
+
+
+def test_dao_parsing_identifier_label_action_type_ua600():
+    """Validate DAO parsing on ua600.007 fixtures which include daodesc and xlink attrs."""
+    sample = FIXTURES_DIR / "ua600.007.xml"
+    e = EAD(str(sample))
+    comp = e.fetch(sample)
+
+    # Find first file component with a dao
+    def _walk(c):
+        yield c
+        for ch in getattr(c, "components", []):
+            yield from _walk(ch)
+
+    target = None
+    for node in _walk(comp):
+        if getattr(node, "digital_objects", None):
+            if len(node.digital_objects) > 0:
+                target = node
+                break
+    assert target is not None
+    dobj = target.digital_objects[0]
+
+    # Identifier should be the xlink:href URL
+    assert isinstance(dobj.identifier, str)
+    assert dobj.identifier.startswith("https://")
+
+    # Label should come from daodesc text
+    assert isinstance(dobj.label, str)
+    assert len(dobj.label) > 0
+    assert "Online object uploaded typically on user request." in dobj.label
+
+    # Action should be embed (from xlink:show)
+    assert dobj.action in ("embed", None)
+
+    # Type should be 'simple'
+    assert dobj.type in ("simple", None)
+
+
+def test_dao_parsing_title_fallback_apap101():
+    """Validate DAO parsing on apap101 fixture and general behavior."""
+    sample = FIXTURES_DIR / "apap101.xml"
+    e = EAD(str(sample))
+    comp = e.fetch(sample)
+
+    # Find a node with digital objects
+    def _walk(c):
+        yield c
+        for ch in getattr(c, "components", []):
+            yield from _walk(ch)
+
+    node_with_dao = None
+    for node in _walk(comp):
+        if getattr(node, "digital_objects", None) and node.digital_objects:
+            node_with_dao = node
+            break
+
+    assert node_with_dao is not None
+    dobj = node_with_dao.digital_objects[0]
+    assert dobj.identifier.startswith("https://")
+    # Label should exist (daodesc present in fixture)
+    assert isinstance(dobj.label, str)
+    assert len(dobj.label) > 0
+    # Action and type should reflect xlink attrs
+    assert dobj.action in ("embed", None)
+    assert dobj.type in ("simple", None)
     # scopecontent should have multiple paragraphs
     assert len(comp.scopecontent) >= 1
     

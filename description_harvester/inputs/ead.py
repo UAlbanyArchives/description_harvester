@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 from lxml import etree
@@ -10,6 +11,23 @@ class EAD:
         if not self.path.exists():
             raise FileNotFoundError(f"The specified path does not exist: {self.path}")
         self.verbose = verbose
+
+        plugin_basedir = os.environ.get("DESCRIPTION_HARVESTER_PLUGIN_DIR", None)
+        # Plugins are loaded from:
+        #   1. plugins directory inside the package (built-in)
+        #   2. .description_harvester in user home directory
+        #   3. plugins subdirectories in plugin dir set in environment variable
+        plugin_dirs = []
+        plugin_dirs.append(Path(f"~/.description_harvester").expanduser())
+        if plugin_basedir:
+            plugin_dirs.append((Path(plugin_basedir)).expanduser())
+        import_plugins(plugin_dirs)
+
+        # Instantiate plugins
+        self.plugins = []
+        for plugin_cls in Plugin.registry.values():
+            plugin_instance = plugin_cls()  # this will call __init__()
+            self.plugins.append(plugin_instance)
 
     def items(self):
         """Yield each EAD file path (handles file or directory)."""
@@ -124,6 +142,16 @@ class EAD:
 
         # Parse physical containers from did or direct children
         self._parse_containers(elem, did, ns, record)
+
+        # Parse digital objects (dao) from did or component
+        self._parse_daos(elem, did, ns, record)
+
+        # Dao plugins
+        for dao in record.digital_objects:
+            for plugin in self.plugins:
+                updated_dao = plugin.read_data(dao)
+                if updated_dao:
+                    dao = updated_dao
         
         # Parse containers
         self._parse_containers(elem, did, ns, record)
@@ -363,8 +391,6 @@ class EAD:
         def _ctype(c):
             t = c.get("type")
             return t.lower() if t else None
-
-        # Determine top and sub containers
         top_el = None
         sub_el = None
 
@@ -406,6 +432,45 @@ class EAD:
         # Only append if at least one indicator/type present
         if any([cont.top_container, cont.top_container_indicator, cont.sub_container, cont.sub_container_indicator]):
             record.containers.append(cont)
+
+    def _parse_daos(self, elem, did, ns, record):
+        """Parse <dao> elements to DigitalObject models.
+
+        Identifier: @href or @xlink:href
+        Label: text from <daodesc> (including <p> and others); fallback to @title
+        Action: @show or @xlink:show
+        Type: @type if present
+        """
+        dao_elements = []
+        if did is not None:
+            dao_elements.extend(did.findall('ead:dao', namespaces=ns))
+        dao_elements.extend(elem.findall('ead:dao', namespaces=ns))
+
+        for dao_ul in dao_elements:
+            href = dao_ul.get('href') or dao_ul.get('{http://www.w3.org/1999/xlink}href')
+            if not href:
+                # skip invalid DAO without identifier
+                continue
+            label = None
+            # Simplest: join all text inside daodesc (including nested <p>, etc.)
+            dd = dao_ul.find('ead:daodesc', namespaces=ns)
+            if dd is not None:
+                label = self._text_of(dd)
+            if not label:
+                label = dao_ul.get('title') or dao_ul.get('{http://www.w3.org/1999/xlink}title')
+
+            action = dao_ul.get('show') or dao_ul.get('{http://www.w3.org/1999/xlink}show')
+            dtype = dao_ul.get('type')
+
+            dao = DigitalObject(identifier=href)
+            if label:
+                dao.label = label
+            if action:
+                dao.action = action
+            if dtype:
+                dao.type = dtype
+
+            record.digital_objects.append(dao)
 
     def _text_of(self, el):
         """Extract text content from element."""
