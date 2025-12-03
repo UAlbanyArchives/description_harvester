@@ -1,6 +1,6 @@
 from os import listdir, makedirs
 from os.path import basename, dirname, exists, isfile, join
-from importlib.machinery import SourceFileLoader
+import importlib.util
 
 from abc import ABC, abstractmethod
 
@@ -55,4 +55,7 @@ def import_plugins(additional_dirs=None):
             # skip if not a normal, non underscored file ending in .py
             if module.startswith("_") or not isfile(full_path) or filename[-3:] != ".py":
                 continue
-            SourceFileLoader(module, full_path).load_module()
+            spec = importlib.util.spec_from_file_location(module, full_path)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
