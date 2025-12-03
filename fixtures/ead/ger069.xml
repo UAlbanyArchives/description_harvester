@@ -16,6 +16,9 @@
       <language langcode="eng" scriptcode="Latn">English</language>
 ,       <language langcode="ger" scriptcode="Latn">German</language>
 .    </langmaterial>
+    <origination label="creator">
+			<persname>Hans Philipp Neisser</persname>
+		</origination>
   </did>
   <bioghist id="aspace_1d396ddb8c7bf289565f58c227a6dc72">
     <head>Biographical Sketch</head>

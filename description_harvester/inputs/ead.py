@@ -115,8 +115,18 @@ class EAD:
             record.dates = self._parse_dates(did, ns)
             record.extents = self._parse_extents(did, ns)
             record.languages = self._parse_languages(did, ns)
+            record.creators = self._parse_origination(did, ns)
             # Parse notes that may be in the DID (abstract, physloc, materialspec, note)
             self._parse_notes(elem, did, ns, record)
+        
+        # Parse controlaccess for agents, subjects, genreform, and places
+        self._parse_controlaccess(elem, ns, record)
+
+        # Parse physical containers from did or direct children
+        self._parse_containers(elem, did, ns, record)
+        
+        # Parse containers
+        self._parse_containers(elem, did, ns, record)
         
         # Parse child components recursively
         # Children can be in either <dsc> (top-level) or directly nested within <c> elements
@@ -264,6 +274,138 @@ class EAD:
                 collected.extend(paras)
             if collected:
                 setattr(record, field, collected)
+
+    def _parse_origination(self, did_el, ns):
+        """Parse origination elements from a DID element to create Agent objects.
+        
+        Looks for <origination> elements and creates Agent objects with agent_type="creator".
+        Each immediate child element of <origination> becomes a separate Agent.
+        """
+        creators = []
+        if did_el is None:
+            return creators
+        for orig in did_el.findall("ead:origination", namespaces=ns):
+            # For each immediate child element of origination, create an Agent
+            for child in orig:
+                name = self._text_of(child)
+                if name:
+                    creators.append(Agent(name=name, agent_type="creator"))
+        
+        return creators
+
+    def _parse_controlaccess(self, elem, ns, record):
+        """Parse controlaccess elements from an archival component.
+        
+        Extracts agents (corpname, famname, persname, name), subjects, genreform, and geogname.
+        Creates Agent objects for name elements with appropriate agent_type.
+        Adds subjects, genreform, and places to the corresponding record lists.
+        """
+        if elem is None:
+            return
+        
+        controlaccess = elem.find("ead:controlaccess", namespaces=ns)
+        if controlaccess is None:
+            return
+        
+        # Parse agents from corpname, famname, persname, and name elements
+        agent_mapping = {
+            'corpname': 'corporate_entity',
+            'famname': 'family',
+            'persname': 'person',
+            'name': 'person'
+        }
+        
+        for element_name, agent_type in agent_mapping.items():
+            for el in controlaccess.findall(f"ead:{element_name}", namespaces=ns):
+                name = self._text_of(el)
+                if name:
+                    record.agents.append(Agent(name=name, agent_type=agent_type))
+        
+        # Parse subjects
+        for subject_el in controlaccess.findall("ead:subject", namespaces=ns):
+            subject_text = self._text_of(subject_el)
+            if subject_text:
+                record.subjects.append(subject_text)
+        
+        # Parse genreform
+        for genreform_el in controlaccess.findall("ead:genreform", namespaces=ns):
+            genreform_text = self._text_of(genreform_el)
+            if genreform_text:
+                record.genreform.append(genreform_text)
+        
+        # Parse geogname (geographic names) and add to places
+        for geogname_el in controlaccess.findall("ead:geogname", namespaces=ns):
+            geogname_text = self._text_of(geogname_el)
+            if geogname_text:
+                record.places.append(geogname_text)
+
+    def _parse_containers(self, elem, did, ns, record):
+        """Parse <container> elements and attach a single Container object per component.
+        Handles <container> under <did> and<container> directly under the component element.
+
+        Sketchy Rules for determining top and sub containers:
+        - If a container has @parent, it is a sub_container; the other is top_container.
+        - If no @parent and multiple containers:
+            * types 'file' or 'folder' -> sub_container
+            * type 'box' -> top_container
+            * types are case-insensitive
+        - Indicators come from the element text.
+        """
+        containers = []
+        if did is not None:
+            containers.extend(did.findall("ead:container", namespaces=ns))
+        containers.extend(elem.findall("ead:container", namespaces=ns))
+
+        if not containers:
+            return
+
+        # Normalize types and collect
+        def _ctype(c):
+            t = c.get("type")
+            return t.lower() if t else None
+
+        # Determine top and sub containers
+        top_el = None
+        sub_el = None
+
+        # Prefer parent attribute to identify sub container
+        for c in containers:
+            if c.get("parent") and sub_el is None:
+                sub_el = c
+            elif not c.get("parent") and top_el is None:
+                top_el = c
+
+        # If still ambiguous or none found, use type heuristics
+        if top_el is None or (len(containers) > 1 and sub_el is None):
+            for c in containers:
+                ct = _ctype(c) or ""
+                if top_el is None and ct == "box":
+                    top_el = c
+                if sub_el is None and ct in ("folder", "file"):
+                    sub_el = c
+
+        # Fallback: assign first as top, second as sub when multiple
+        if top_el is None and containers:
+            top_el = containers[0]
+        if sub_el is None and len(containers) > 1:
+            # pick the next different element than top
+            for c in containers:
+                if c is not top_el:
+                    sub_el = c
+                    break
+
+        # Build Container model
+        cont = Container()
+        if top_el is not None:
+            cont.top_container = _ctype(top_el)
+            cont.top_container_indicator = self._text_of(top_el)
+        if sub_el is not None:
+            cont.sub_container = _ctype(sub_el)
+            cont.sub_container_indicator = self._text_of(sub_el)
+
+        # Only append if at least one indicator/type present
+        if any([cont.top_container, cont.top_container_indicator, cont.sub_container, cont.sub_container_indicator]):
+            record.containers.append(cont)
 
     def _text_of(self, el):
         """Extract text content from element."""

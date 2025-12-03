@@ -309,7 +309,7 @@ class Arclight():
         agent_translations = {
             "corporate_entity": "corpname_ssim",
             "family": "famname_ssim",
-            "person": "persname_ssim"
+            "person": "persname_ssim",
         }
         # Agents are wonky in the default indexer which this recreates, but it should probably be thought out better. I don't have great data to do it right
         creators = []

@@ -18,6 +18,9 @@
 ,       <language langcode="fre" scriptcode="Latn">French</language>
 ,       <language langcode="spa" scriptcode="Latn">Spanish; Castilian</language>
 .    </langmaterial>
+    <origination label="creator">
+			<persname>Michelle Crone</persname>
+		</origination>
   </did>
   <processinfo id="aspace_353a6aa62cd602b57cb3f44184de4e3b">
     <head>Processing Information</head>

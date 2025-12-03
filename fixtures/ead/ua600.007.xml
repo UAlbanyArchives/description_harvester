@@ -17,6 +17,9 @@
     <langmaterial>
       <language langcode="eng" scriptcode="Latn">English</language>
 .    </langmaterial>
+    <origination label="creator">
+			<corpname>State University of New York at Albany, Department of Women's, Gender and Sexuality Studies.</corpname>
+		</origination>
   </did>
   <bioghist id="aspace_61ac4356fb9140f4a17e8e69fcb72dc5">
     <head>Biographical / Historical</head>
