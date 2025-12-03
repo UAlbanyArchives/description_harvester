@@ -10,29 +10,26 @@ from description_harvester.models.arclight import SolrCollection, SolrComponent
 class Arclight():
 
 
-    def __init__(self, solr, repository_name, metadata_config):
+    def __init__(self, solr, metadata_config):
         """
         Connects to an accessible Solr instance with pysolr.
 
         Parameters:
             solr(obj): A pysolr solr object, ready for solr.add()
-            repository_name(str): Either None or the full repository name if the --repo arg is used
             metadata_config(list): How custom metadata fields should be indexed in Solr. 
                 This is a list of dicts with Solr dynamic field suffixes ('ssim') as the keys, such as:
                 [ssim: [field1, field2] ssm: [field3, field4] tesim: [field5]]
         """
 
         self.solr = solr
-        self.repository_name = repository_name
         self.metadata_config = metadata_config
 
 
-    def convert(self, record):
-
+    def convert(self, record, repository_name):
         has_online_content = set()
 
         print(f"\tconverting to {record.id} to Solr documents...")
-        solrDocument, has_online_content, online_item_count, total_component_count = self.convertCollection(record, has_online_content)
+        solrDocument, has_online_content, online_item_count, total_component_count = self.convertCollection(record, repository_name, has_online_content)
         solrDocument.total_component_count_is = int(total_component_count)
         
         if len(has_online_content) > 0:
@@ -138,9 +135,7 @@ class Arclight():
         return modified_text
 
 
-
-
-    def convertCollection(self, record, has_online_content, online_item_count=0, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
+    def convertCollection(self, record, repository_name, has_online_content, online_item_count=0, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
         """
         A recursive function to convert collection and component objects to Arclight-friendly solr docs.
         It takes a component object and converts it and any child objects to an Arclight-friendly
@@ -148,6 +143,7 @@ class Arclight():
 
         Parameters:
             record (Component): a hierarchical component object containing all public-facing description for a collection
+            repository_name (str): Either None or the full repository name if the --repo arg is used to override the EAD/ASpace repository name
             has_online_content (set):
             total_component_count(int): a running integer of the total components
             recursive_level (int): The level of recursion. Start at 0
@@ -209,7 +205,7 @@ class Arclight():
             solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
         solrDocument.unitdate_ssm = dates
         solrDocument.normalized_date_ssm = [", ".join(string_dates)]
-
+        
         if record.title:
             solrDocument.title_ssm = [self.strip_text(record.title)]
             solrDocument.title_tesim = [self.strip_text(record.title)]
@@ -218,7 +214,7 @@ class Arclight():
             else:
                 solrDocument.title_html_tesm = [record.title]
         # this this empty for components, which I think is fine. v1.4 just uses the title field
-        solrDocument.title_filing_ssi = record.title_filing_ssi
+        solrDocument.title_filing_ssi = record.title_filing
 
         if record.title:
             solrDocument.normalized_title_ssm = [f"{solrDocument.title_ssm[0]}, {solrDocument.normalized_date_ssm[0]}"]
@@ -290,9 +286,9 @@ class Arclight():
             new_parent_levels.append(record.level)
 
         # repository_ssm is empty in stock arclight for components, but I think its fine to set it
-        if self.repository_name:
-            solrDocument.repository_ssim = [self.repository_name]
-            solrDocument.repository_ssm = [self.repository_name]
+        if repository_name:
+            solrDocument.repository_ssim = [repository_name]
+            solrDocument.repository_ssm = [repository_name]
         else:
             solrDocument.repository_ssm = [record.repository]
             solrDocument.repository_ssim = [record.repository]
@@ -313,7 +309,7 @@ class Arclight():
         agent_translations = {
             "corporate_entity": "corpname_ssim",
             "family": "famname_ssim",
-            "person": "persname_ssim"
+            "person": "persname_ssim",
         }
         # Agents are wonky in the default indexer which this recreates, but it should probably be thought out better. I don't have great data to do it right
         creators = []
@@ -488,7 +484,7 @@ class Arclight():
         for component in record.components:
             total_component_count += 1
             inherited_data["child_component_count"] = len(component.components)
-            subcomponent, has_online_content, online_item_count, total_component_count = self.convertCollection(component, has_online_content, online_item_count, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
+            subcomponent, has_online_content, online_item_count, total_component_count = self.convertCollection(component, repository_name, has_online_content, online_item_count, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
             order_counter += 1
             subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)

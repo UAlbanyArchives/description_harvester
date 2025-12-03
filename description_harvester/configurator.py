@@ -21,7 +21,7 @@ class Config:
             setattr(self, k, v)
 
 
-    def read_repositories(slug):
+    def read_repositories(slug, verbose=False):
         """
         Reads the `repositories.yml` configuration file from the user's home directory
         and retrieves the `name` of a repository based on the provided slug.
@@ -37,7 +37,8 @@ class Config:
             The name of the repository matching the given slug, if found.
 
         """
-
+        if verbose:
+            print(f"Reading repositories configuration using slug: {slug}")
         repositories_path = Path.home() / ".description_harvester/repositories.yml"
 
         if not repositories_path.exists():
@@ -52,7 +53,10 @@ class Config:
         slug = slug.strip().lower()
         for key, repo_data in repositories.items():
             if key.lower() == slug:
-                return repo_data.get('name', None)
+                repo_name = repo_data.get('name', None)
+                if verbose:
+                    print(f"Setting repository name: {repo_name}")
+                return repo_name
 
         raise ValueError(f"No repository found for the specified slug: '{slug}'")
 

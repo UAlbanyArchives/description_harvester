@@ -9,6 +9,7 @@ from .configurator import Config
 from .utils import write2disk, save_to_cache, load_from_cache
 from description_harvester.outputs.arclight import Arclight
 from description_harvester.inputs.aspace import ArchivesSpace
+from description_harvester.inputs.ead import EAD
 
 config = Config()
 
@@ -27,14 +28,18 @@ def parse_args(args=None):
     parser.add_argument('--today', action="store_true")
     parser.add_argument('--solr_url', nargs=1)
     parser.add_argument('--core', nargs=1)
-    parser.add_argument('--repo')
-    parser.add_argument('--repo_id', type=int)
-    #parser.add_argument('--ead', default=False, action="store_true", help='Optionally write to a EAD file(s).')
-    
+    parser.add_argument('--repo', help="Override repository name in EAD/ArchivesSpace with a slug from the ArcLight repositories.yml.")
+    parser.add_argument('--repo_id', type=int, help="ArchivesSpace repository ID (default: 2)")
+    parser.add_argument(
+        '--ead',
+        metavar="PATH",
+        help="Path to an EAD-XML file or a directory containing EAD-XML files."
+    )
+
     return parser.parse_args(args) if args else parser.parse_args()
 
-def add_record(arclight, record, verbose=False):
-    solr_doc = arclight.convert(record)
+def add_record(arclight, record, repository_name=None, verbose=False):
+    solr_doc = arclight.convert(record, repository_name)
     arclight.add(solr_doc)
     print(f"\tIndexed {record.id}")
 
@@ -47,17 +52,19 @@ def get_time_since(args):
         return str(int(time.time()) - 86400)
     return None
 
-def index_record(args, arclight, aspace, collection_id, use_uri=False):
-    loader = aspace.read_uri if use_uri else aspace.read
+def index_record(args, arclight, source, identifier, repository_name=None, use_uri=False):
+    # indexes a single collection/fonds/resource and manages cache
     record = None
     if not args.no_cache:
-        record = load_from_cache(collection_id, config.cache_dir, config.cache_expiration)
+        record = load_from_cache(identifier, config.cache_dir, config.cache_expiration)
+
     if not record:
-        record = loader(collection_id)
+        record = source.fetch(identifier, use_uri=use_uri)
         if record:
-            save_to_cache(collection_id, record, config.cache_dir)
+            save_to_cache(identifier, record, config.cache_dir)
+
     if record:
-        add_record(arclight, record, args.verbose)
+        add_record(arclight, record, repository_name, args.verbose)
 
 def handle_deletions(solr_url, solr_core, collection_ids):
     solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=True)
@@ -71,8 +78,20 @@ def harvest(args=None):
     start_time = time.time()
     print(f"\n------------------------------\nRan at: {datetime.fromtimestamp(start_time)}")
 
-    if not (args.id or args.new or args.all or args.updated or args.uri or args.hour or args.today or args.delete):
-        print("No action requested, need a collection ID or --updated or --new")
+    required_actions = [
+        args.id,
+        args.new,
+        args.all,
+        args.updated,
+        args.uri,
+        args.ead,
+        args.hour,
+        args.today,
+        args.delete,
+    ]
+
+    if not any(required_actions):
+        print("No action requested, need a collection ID, EAD path, or --updated, --new, etc.")
         return
 
     solr_url = args.solr_url[0] if args.solr_url else config.solr_url
@@ -85,40 +104,55 @@ def harvest(args=None):
     solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=False, timeout=600)
     solr.ping()
 
-    repository_name = Config.read_repositories(args.repo) if args.repo else None
-    repo_id = str(args.repo_id) if args.repo_id else '2'
-    aspace = ArchivesSpace(repository_id=repo_id, verbose=args.verbose)
-    arclight = Arclight(solr, repository_name, config.metadata)
+    # ---- Check input source ----
+    source_type = "ead" if args.ead else "aspace"
+
+    if source_type == "ead":
+        source = EAD(args.ead, verbose=args.verbose)
+    else:
+        repo_id = str(args.repo_id) if args.repo_id else '2'
+        source = ArchivesSpace(repository_id=repo_id, verbose=args.verbose)
+
+    # Set up ArcLight
+    arclight = Arclight(solr, config.metadata)
+    repository_name = Config.read_repositories(args.repo, args.verbose) if args.repo else None
     doc_count = 0
 
-    time_since = get_time_since(args)
-    if time_since is not None:
-        for uri in aspace.read_since(time_since):
-            index_record(args, arclight, aspace, uri, use_uri=True)
-            doc_count += 1
-
-    if args.new:
-        for cid in aspace.all_resource_ids():
-            results = solr.search(f"id:{cid.replace('.', '-')}", rows=1, **{"fl": "id"})
-            if results.hits == 0:
-                index_record(args, arclight, aspace, cid)
+    # ---- ArchivesSpace-only features ----
+    if source_type == "aspace":
+        time_since = get_time_since(args)
+        if time_since is not None:
+            for uri in source.read_since(time_since):
+                index_record(args, arclight, source, uri, repository_name, use_uri=True)
                 doc_count += 1
-            else:
-                print(f"\tSkipping {cid} (already exists)")
 
-    if args.all:
-        for cid in aspace.all_resource_ids():
-            index_record(args, arclight, aspace, cid)
-            doc_count += 1
+        if args.new:
+            for cid in source.all_resource_ids():
+                results = solr.search(f"id:{cid.replace('.', '-')}", rows=1, fl="id")
+                if results.hits == 0:
+                    index_record(args, arclight, source, cid, repository_name)
+                    doc_count += 1
+                else:
+                    print(f"\tSkipping {cid} (already exists)")
 
-    if args.id:
-        for cid in args.id:
-            index_record(args, arclight, aspace, cid)
-            doc_count += 1
+        if args.all:
+            for cid in source.all_resource_ids():
+                index_record(args, arclight, source, cid, repository_name)
+                doc_count += 1
 
-    if args.uri:
-        for uri in args.uri:
-            index_record(args, arclight, aspace, uri, use_uri=True)
+        if args.id:
+            for cid in args.id:
+                index_record(args, arclight, source, cid, repository_name)
+                doc_count += 1
+
+        if args.uri:
+            for uri in args.uri:
+                index_record(args, arclight, source, uri, repository_name, use_uri=True)
+                doc_count += 1
+
+    if source_type == "ead":
+        for file in source.items():
+            index_record(args, arclight, source, file, repository_name)
             doc_count += 1
 
     print (f"Committing {doc_count} collection docs to the Solr index...")
