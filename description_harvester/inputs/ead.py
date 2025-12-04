@@ -194,6 +194,39 @@ class EAD:
         
         return record
 
+    def _render_chronlist(self, chronlist_el, ns):
+        """ parse <chronlist> into a basic html table as a str"""
+
+        rows = []
+        for item in chronlist_el.findall("ead:chronitem", namespaces=ns):
+            # Get date text
+            date_el = item.find("ead:date", namespaces=ns)
+            date_text = date_el.text.strip() if date_el is not None and date_el.text else ""
+
+            # Get all events (prefer eventgrp if present, otherwise direct children)
+            events_texts = []
+            eventgrp = item.find("ead:eventgrp", namespaces=ns)
+            event_parent = eventgrp if eventgrp is not None else item
+            
+            for ev in event_parent.findall("ead:event", namespaces=ns):
+                # Use tostring to preserve inline tags like <emph>
+                ev_html = etree.tostring(ev, encoding='unicode', method='html')
+                # Remove the <event ...> opening tag (with any attributes) and </event> closing tag
+                ev_html = re.sub(r'^<event[^>]*>', '', ev_html)
+                ev_html = ev_html.replace('</event>', '', 1)
+                ev_html = ev_html.strip()
+                if ev_html:
+                    events_texts.append(self._normalize_ead_tags(ev_html))
+
+            # Join multiple events with semicolons
+            events_combined = "; ".join(events_texts)
+
+            # Add table row
+            rows.append(f"<tr><th>{date_text}</th><td>{events_combined}</td></tr>")
+
+        return "<table>\n" + "\n".join(rows) + "\n</table>"
+
+
     def _extract_note_paragraphs(self, el, ns):
         """Return a list of paragraph strings for a note element, excluding any <head> content.
 
@@ -219,7 +252,13 @@ class EAD:
                 if text:
                     text = self._normalize_ead_tags(text)
                     paragraphs.append(text)
-            return paragraphs
+            
+        chronlists = el.findall("ead:chronlist", namespaces=ns)
+        if chronlists:
+            for cl in chronlists:
+                paragraphs.append(self._render_chronlist(cl, ns))
+
+        return paragraphs
 
         # Otherwise, collect text of child elements excluding <head>
         if el.text and el.text.strip():

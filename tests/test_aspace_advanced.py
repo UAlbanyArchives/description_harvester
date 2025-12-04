@@ -156,8 +156,8 @@ def test_bibliography_merge_and_lists(monkeypatch, make_aspace):
     assert rec.bibliography_heading == "Works B; Works B"
     assert rec.bibliography == ["A1", "B1", "B2"]
     assert rec.odd == ["One\nTwo"]
-    # Current implementation uses outer 'date' variable instead of event_date
-    assert rec.custodhist == ["{'date_type': 'inclusive', 'expression': '1950-1960'}: Started\n{'date_type': 'inclusive', 'expression': '1950-1960'}: Moved"]
+    # Chronology renders as HTML table with dates and events
+    assert rec.custodhist == ["<table><tr><th>1900</th><td>Started</td></tr><tr><th>1950</th><td>Moved</td></tr></table>"]
 
 
 def test_three_level_containers(monkeypatch, make_aspace):
@@ -269,6 +269,48 @@ def test_multi_waypoints(monkeypatch, make_aspace):
     aspace = make_aspace(routes)
     rec = aspace.read("test001")
     assert [c.title for c in rec.components] == ["C1", "C2"]
+
+
+def test_chronology_with_multiple_events(monkeypatch, make_aspace):
+    """Test that chronology notes handle both string and list format for events."""
+    resource = make_minimal_resource()
+    resource["notes"] = [
+        {"publish": True, "jsonmodel_type": "note_multipart", "type": "bioghist", "subnotes": [
+            {"publish": True, "jsonmodel_type": "note_chronology", "items": [
+                {"event_date": "1907", "events": "Published <i>Der schwarze Haufen</i>"},
+                {"event_date": "1948-1964", "events": ["Wrote for <i>Deutsche Zeitung</i>", "Contributed to <i>Der Monat</i>", "Published in <i>Weltwoche</i>"]},
+                {"event_date": "1980", "events": "Final article in <i>Dissent</i>"},
+            ]}
+        ]},
+    ]
+    routes = {
+        'repositories/2': {"name": "Repo"},
+        'repositories/2/find_by_id/resources?identifier[]=["test001"]': {"resources": [{"ref": resource["uri"]}]},
+        resource["uri"]: resource,
+        (f"{resource['uri']}/tree/root", tuple(sorted({"published_only": True}.items()))): {"waypoints": 0},
+    }
+    aspace = make_aspace(routes)
+    rec = aspace.read("test001")
+    
+    # Verify HTML table structure
+    assert len(rec.bioghist) == 1
+    chronology = rec.bioghist[0]
+    assert chronology.startswith("<table>")
+    assert chronology.endswith("</table>")
+    
+    # Verify dates in th tags
+    assert "<th>1907</th>" in chronology
+    assert "<th>1948-1964</th>" in chronology
+    assert "<th>1980</th>" in chronology
+    
+    # Verify single event as string
+    assert "<td>Published <i>Der schwarze Haufen</i></td>" in chronology
+    
+    # Verify multiple events joined with comma
+    assert "<td>Wrote for <i>Deutsche Zeitung</i>, Contributed to <i>Der Monat</i>, Published in <i>Weltwoche</i></td>" in chronology
+    
+    # Verify final event
+    assert "<td>Final article in <i>Dissent</i></td>" in chronology
 
 
 def test_read_since_and_all_resource_ids(monkeypatch, make_aspace):

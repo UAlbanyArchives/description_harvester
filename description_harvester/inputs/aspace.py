@@ -373,6 +373,7 @@ class ArchivesSpace():
                     else:
                         setattr(record, "bibliography", note["items"])
                 else:
+                    # "note_multipart"
                     note_text = []
                     for subnote in note["subnotes"]:
                         if subnote['publish'] == True:
@@ -382,15 +383,26 @@ class ArchivesSpace():
                             elif subnote['jsonmodel_type'] == "note_chronology":
                                 events = []
                                 for event in subnote["items"]:
-                                    event_date = event.get("event_date", "")
-                                    event_text = event.get("events", "")
-                                    events.append(f"{date}: {event_text}")
-                                note_text.append("\n".join(events))
+                                    event_date = f"<th>{event.get('event_date', '')}</th>"
+                                    event_data = event.get('events', [])
+                                    # Handle both string and list format
+                                    if isinstance(event_data, str):
+                                        event_text = event_data
+                                    else:
+                                        event_text = ", ".join(event_data)
+                                    events.append(f"<tr>{event_date}<td>{event_text}</td></tr>")
+                                dl_block = f"<table>{''.join(events)}</table>"
+                                note_text.append(dl_block)
                             elif subnote['jsonmodel_type'] == "note_orderedlist":
                                 note_text.append("\n".join(subnote['items']))
                             else:
                                 raise ValueError(subnote)
-                    setattr(record, note["type"], note_text)
+                    current = getattr(record, note["type"], None)
+                    if current is None:
+                        setattr(record, note["type"], note_text)
+                    else:
+                        current.extend(note_text)
+                        setattr(record, note["type"], current)
 
         has_representative_instance = any(instance.get("is_representative") for instance in apiObject["instances"] if instance.get("instance_type") == "digital_object")
         for instance in apiObject["instances"]:
