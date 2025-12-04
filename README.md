@@ -1,7 +1,7 @@
 # description_harvester
 A tool for working with archival description for public access. description_harvester reads archival description into a [minimalist data model for public-facing archival description](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py) and then converts it to the [ArcLight data model](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/ArcLight.py) and POSTs it into an ArcLight Solr index using [PySolr](https://github.com/django-haystack/pysolr).
 
-description_harvester is designed to be extensible and harvest archival description from a number of [sources](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/inputs). Currently the only available source harvests data from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake). It is possible in the future to add modules for EAD2002 and other sources. Its also possible to add additional [output modules](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/outputs) to serialize description to EAD or other formats in addition to or in replace of sending description to an ArcLight Solr instance. This potential opens up new possibilities of managing description using low-barrier formats and tools.
+description_harvester is designed to be extensible and harvest archival description from a number of [sources](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/inputs). Currently the only available sources harvests data from the [ArchivesSpace](https://github.com/archivesspace/archivesspace) [API](https://archivesspace.github.io/archivesspace/api/#introduction) using [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake) or [EAD 2002](https://www.loc.gov/ead/) XML files. Its also possible to add additional [output modules](https://github.com/UAlbanyArchives/description_harvester/tree/main/description_harvester/outputs) to serialize description to EAD or other formats in addition to or in replace of sending description to an ArcLight Solr instance. This potential opens up new possibilities of managing description using low-barrier formats and tools.
 
 description_harvester is designed to be a drop-in replacement for the ArcLight Traject indexer. It also includes a [plugin](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/manifests.py) that attempts to recognized IIIF manifests included as file versions and uses manifests to fully index digital objects from digital repositories and other sources, including item-level metadata fields, embedded text, OCR text, and transcriptions. 
 
@@ -90,11 +90,23 @@ Index collections modified since las run: `harvest --updated`
 
 Index collections not already in the index: `harvest --new`
 
-### Deleting collections
+## Indexing from EAD 2002
 
-You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.ArcLight.edu/catalog/apap106`.
+```
+harvest --ead path/to/ead.xml
+```
 
-`harvest --delete apap101 apap301`
+You can also give it a directory and it will harvest all *.xml
+
+```
+harvest --ead path/to/ead_files
+```
+
+## Verbose output
+
+```
+harvest --id ger071 -v
+```
 
 ## Caching
 
@@ -106,6 +118,12 @@ cache_dir: "~/path/to/my_cache"
 cache_dir: "C:/Users/username/my_cache"
 cache_dir: false
 ```
+
+## Deleting collections
+
+You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.ArcLight.edu/catalog/apap106`.
+
+`harvest --delete apap101 apap301`
 
 ## Plugins
 
