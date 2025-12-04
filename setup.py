@@ -39,5 +39,5 @@ setuptools.setup(
         "jsonmodels",
         "requests>=2.28.1,<3"
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.9",
 )

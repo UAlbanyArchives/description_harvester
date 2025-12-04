@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  python38:
+    image: python:3.8
+    container_name: description_harvester_py38
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      pip install . &&
+      pip install pytest &&
+      pytest -v
+      "
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  python39:
+    image: python:3.9
+    container_name: description_harvester_py39
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      pip install . &&
+      pip install pytest &&
+      pytest -v
+      "
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  python310:
+    image: python:3.10
+    container_name: description_harvester_py310
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      pip install . &&
+      pip install pytest &&
+      pytest -v
+      "
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  python311:
+    image: python:3.11
+    container_name: description_harvester_py311
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      pip install . &&
+      pip install pytest &&
+      pytest -v
+      "
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  python312:
+    image: python:3.12
+    container_name: description_harvester_py312
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      pip install . &&
+      pip install pytest &&
+      pytest -v
+      "
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  python313:
+    image: python:3.13
+    container_name: description_harvester_py313
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      pip install . &&
+      pip install pytest &&
+      pytest -v
+      "
+    environment:
+      - PYTHONUNBUFFERED=1
