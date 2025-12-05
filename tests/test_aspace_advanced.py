@@ -215,7 +215,7 @@ def test_dao_rewrite_and_publishing(monkeypatch, make_aspace):
         "title": "Obj A",
         "digital_object_type": "mixed",
         "file_versions": [
-            {"publish": True, "is_representative": True, "file_uri": "https://archives.albany.edu/concern/works/xyz", "xlink_show_attribute": "embed"},
+            {"publish": True, "is_representative": True, "file_uri": "https://media.archives.albany.edu/apap009/abcd1234/manifest.json", "xlink_show_attribute": "embed"},
             {"publish": True, "file_uri": "https://example.com/other"},
         ],
     }

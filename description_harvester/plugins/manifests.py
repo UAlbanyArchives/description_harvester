@@ -243,6 +243,10 @@ class MyPlugin(Plugin):
                 dao.rights_statement = "https://rightsstatements.org/vocab/InC-EDU/1.0/"
         else:
             # assume IIIF manifest because of our bad data
+            
+            # Remove Mirador URL
+            if dao.identifier.startswith("https://media.archives.albany.edu?manifest="):
+                dao.identifier = dao.identifier.removeprefix("https://media.archives.albany.edu?manifest=")
 
             # Start by checking if the identifier is a manifest URL
             if not "manifest.json" in dao.identifier and not "https://archives.albany.edu/catalog?f[archivesspace_record_tesim][]=" in dao.identifier:
