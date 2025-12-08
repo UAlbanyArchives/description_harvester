@@ -149,7 +149,7 @@ class EAD:
         # Dao plugins
         for dao in record.digital_objects:
             for plugin in self.plugins:
-                updated_dao = plugin.read_data(dao)
+                updated_dao = plugin.update_dao(dao)
                 if updated_dao:
                     dao = updated_dao
         

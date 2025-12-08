@@ -127,17 +127,98 @@ You can delete one or more collections using the `--delete` argument. This uses 
 
 ## Plugins
 
-Local implementations may have to override some description_harvester logic. Indexing digital objects from local systems may be a common use case.
+Plugins let you add institution-specific customization without modifying the core package. Common use cases might be:
+- Customizing repository names based on collection identifiers
+- Enriching digital objects with data from local systems (e.g., IIIF manifests, preservation systems)
 
-To create a plugin, create a plugin directory, either at `~/.description_harvester` or a path you pass with a `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable.
+### Creating a Plugin
 
-Use the example [default.py](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/default.py) and make a copy in your plugin directory.
+1. **Copy the template**: Copy [default.py](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/default.py) to `~/.description_harvester/` (or use `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable)
 
-Use `custom_repository()` to customize how repository names are set. This has access to an [ArchivesSpace resource API object](https://archivesspace.github.io/archivesspace/api/#get-a-resource).
+2. **Rename the class**: Change `DefaultPlugin` to something descriptive (e.g., `MyInstitutionPlugin`)
 
-Use `read_data()` to customize [DigitalObject objects](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py).
+3. **Update plugin_name**: Set a unique identifier:
+   ```python
+   class MyInstitutionPlugin(Plugin):
+       plugin_name = "my_institution"
+   ```
 
-The plugin importer will first import plugins from within the package, second it will look in `~/.description_harvester`, and finally it will look in the `DESCRIPTION_HARVESTER_PLUGIN_DIR` path. 
+4. **Implement methods**: Override one or both customization hooks:
+
+   - **`custom_repository(resource)`**: Customize repository names
+     - Input: [ArchivesSpace resource API object](https://archivesspace.github.io/archivesspace/api/#get-a-resource)
+     - Output: Repository name string or `None` for default behavior
+   
+   - **`update_dao(dao)`**: Enrich digital objects
+     - Input: [DigitalObject](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py) with identifier, label, metadata, etc.
+     - Output: Modified DigitalObject with additional metadata
+
+### Plugin Discovery
+
+Plugins are automatically loaded from (in order):
+1. Built-in plugins in the package (e.g., `default.py`)
+2. `~/.description_harvester/` directory
+3. Custom directory set via `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable
+
+### Example Plugin
+
+```python
+from description_harvester.plugins import Plugin
+from description_harvester.iiif_utils import enrich_dao_from_manifest
+
+class MyInstitutionPlugin(Plugin):
+    plugin_name = "my_institution"
+    
+    def custom_repository(self, resource):
+        # Use custom names for special collections
+        if resource['id_0'].startswith('sc'):
+            return "Special Collections & Archives"
+        return None  # Use default for others
+    
+    def update_dao(self, dao):
+        # Enrich digital objects with IIIF manifest data
+        if 'manifest.json' in dao.identifier:
+            enrich_dao_from_manifest(dao, manifest_url=dao.identifier)
+            # Add custom logic
+            dao.metadata['institution_id'] = 'my_institution'
+        return dao
+```
+
+### IIIF Utilities
+
+For plugins working with IIIF manifests, `description_harvester.iiif_utils` provides helper functions:
+
+```python
+from description_harvester.iiif_utils import (
+    fetch_manifest,              # Fetch and parse manifest from URL
+    extract_text_from_manifest,  # Extract OCR/transcription text
+    get_thumbnail_url,           # Get thumbnail image URL
+    get_rights_statement,        # Get rights/license info
+    extract_metadata_fields,     # Get all metadata as dict
+    enrich_dao_from_manifest,    # All-in-one enrichment
+)
+
+def update_dao(self, dao):
+    if 'manifest.json' in dao.identifier:
+        # Option 1: Use convenience function
+        enrich_dao_from_manifest(dao, manifest_url=dao.identifier)
+        
+        # Option 2: Fine-grained control
+        manifest = fetch_manifest(dao.identifier)
+        if manifest:
+            dao.text_content = extract_text_from_manifest(manifest)
+            dao.thumbnail_href = get_thumbnail_url(manifest)
+            dao.rights_statement = get_rights_statement(manifest)
+            # Optionally add metadata fields from manifests
+            dao.metadata.update(extract_metadata_fields(manifest))
+
+            # Set metadata fields with whatever local logic
+            dao.metadata['custom_field'] = 'custom_value'
+    
+    return dao
+```
+
+See the [iiif_utils module documentation](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/iiif_utils.py) for all available functions.
 
 ## Use as a library
 

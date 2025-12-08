@@ -446,7 +446,7 @@ class ArchivesSpace():
                                     dao.action = file_version.get("xlink_show_attribute", "link")
 
                                     for plugin in self.plugins:
-                                        updated_dao = plugin.read_data(dao)
+                                        updated_dao = plugin.update_dao(dao)
                                         if updated_dao:
                                             dao = updated_dao
 
