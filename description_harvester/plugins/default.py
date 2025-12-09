@@ -10,7 +10,7 @@ class DefaultPlugin(Plugin):
 
 	def __init__(self):
 		"""Initialize your plugin. Run any setup code here."""
-		print(f"Setup {self.plugin_name} plugin for reading digital object data.")
+		print(f"Set up {self.plugin_name} plugin for reading digital object data.")
 
 		# Set up any prerequisites or checks here
 

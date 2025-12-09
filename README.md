@@ -131,6 +131,8 @@ Plugins let you add institution-specific customization without modifying the cor
 - Customizing repository names based on collection identifiers
 - Enriching digital objects with data from local systems (e.g., IIIF manifests, preservation systems)
 
+[UAlbany's local plugins](https://github.com/UAlbanyArchives/description_harvester_plugins) may be a helpful example.
+
 ### Creating a Plugin
 
 1. **Copy the template**: Copy [default.py](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/default.py) to `~/.description_harvester/` (or use `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable)
