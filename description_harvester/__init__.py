@@ -114,7 +114,7 @@ def harvest(args=None):
         source = ArchivesSpace(repository_id=repo_id, verbose=args.verbose)
 
     # Set up ArcLight
-    arclight = Arclight(solr, config.metadata)
+    arclight = Arclight(solr, config.metadata, config.online_content_label)
     repository_name = Config.read_repositories(args.repo, args.verbose) if args.repo else None
     doc_count = 0
 

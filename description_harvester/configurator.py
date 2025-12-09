@@ -9,6 +9,7 @@ class Config:
         "last_query": 0,
         "solr_core": "arclight",
         "solr_url": "https://solr.example.com:8984/solr",
+        "online_content_label": "Online access",
     }
 
     def __init__(self):

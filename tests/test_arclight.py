@@ -643,7 +643,7 @@ class TestConvertDigitalObjects:
         
         assert result.dado_identifier_ssm == "https://example.com/object1"
         assert result.dado_label_tesim == "Object Label"
-        assert result.has_online_content_ssim == ["View only online content"]
+        assert result.has_online_content_ssim == ["Online access"]
         assert result.online_item_count_is == 1
     
     def test_convert_digital_object_with_metadata(self):
@@ -694,7 +694,7 @@ class TestConvertDigitalObjects:
         
         result = arclight.convert(comp, "Test Repository")
         
-        assert result.has_online_content_ssim == ["View only online content"]
+        assert result.has_online_content_ssim == ["Online access"]
         assert result.online_item_count_is == 1
 
 
@@ -810,7 +810,7 @@ class TestConvertOnlineContent:
         result = arclight.convert(collection, "Test Repository")
         
         # Collection should be marked as having online content
-        assert result.has_online_content_ssim == ["View only online content"]
+        assert result.has_online_content_ssim == ["Online access"]
         assert result.online_item_count_is == 1
     
     def test_multiple_online_items_counted(self):
@@ -863,6 +863,53 @@ class TestConvertWithRepositoryOverride:
         result = arclight.convert(comp, None)
         
         assert result.repository_ssm == ["Original Repository"]
+
+
+class TestCustomOnlineContentLabel:
+    """Test custom online content label configuration."""
+    
+    def test_custom_online_content_label(self):
+        """Test that custom online content label is used when provided."""
+        mock_solr = Mock()
+        custom_label = "Custom Online Label"
+        arclight = Arclight(mock_solr, [], online_content_label=custom_label)
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        # Child with digital object
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.dates = [Date(expression="1950")]
+        dao = DigitalObject(identifier="https://example.com/object1")
+        child.digital_objects = [dao]
+        
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Should use custom label
+        assert result.has_online_content_ssim == [custom_label]
+    
+    def test_default_online_content_label(self):
+        """Test that default label is used when no custom label provided."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        # Child with digital object
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.dates = [Date(expression="1950")]
+        dao = DigitalObject(identifier="https://example.com/object1")
+        child.digital_objects = [dao]
+        
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Should use default label
+        assert result.has_online_content_ssim == ["Online access"]
 
 
 class TestAddToSolr:

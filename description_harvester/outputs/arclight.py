@@ -10,7 +10,7 @@ from description_harvester.models.arclight import SolrCollection, SolrComponent
 class Arclight():
 
 
-    def __init__(self, solr, metadata_config):
+    def __init__(self, solr, metadata_config, online_content_label="Online access"):
         """
         Connects to an accessible Solr instance with pysolr.
 
@@ -19,10 +19,13 @@ class Arclight():
             metadata_config(list): How custom metadata fields should be indexed in Solr. 
                 This is a list of dicts with Solr dynamic field suffixes ('ssim') as the keys, such as:
                 [ssim: [field1, field2] ssm: [field3, field4] tesim: [field5]]
+            online_content_label(str): Label to display for items with online content.
+                Defaults to "View only online content"
         """
 
         self.solr = solr
         self.metadata_config = metadata_config
+        self.online_content_label = online_content_label
 
 
     def convert(self, record, repository_name):
@@ -35,7 +38,7 @@ class Arclight():
         if len(has_online_content) > 0:
             if solrDocument.id in has_online_content:
                 #solrDocument.has_online_content_ssim = ["Contains online items"]
-                solrDocument.has_online_content_ssim = ["View only online content"]
+                solrDocument.has_online_content_ssim = [self.online_content_label]
             solrDocument = self.mark_online_content(solrDocument, has_online_content)
             solrDocument.online_item_count_is = int(online_item_count)
 
@@ -473,7 +476,7 @@ class Arclight():
         if has_dao:
             online_item_count += 1
             #solrDocument.has_online_content_ssim = ["Online access"]
-            solrDocument.has_online_content_ssim = ["View only online content"]
+            solrDocument.has_online_content_ssim = [self.online_content_label]
             has_online_content.add(record.id.replace(".", "-"))
             has_online_content.update(parents)
 

@@ -22,7 +22,10 @@ solr_url: http://127.0.0.1:8983/solr
 solr_core: blacklight-core
 last_query: 0
 cache_expiration: 3600
+online_content_label: "Online access"
 ```
+
+The `online_content_label` setting allows you to customize the label displayed for items with online content in ArcLight. The default is "Online access".
 
 ### Adding custom digital object metadata
 

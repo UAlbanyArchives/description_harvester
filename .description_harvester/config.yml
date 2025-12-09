@@ -1,6 +1,7 @@
 cache_expiration: 86400
 cache_dir: "~/.description_harvester/cache"
 last_query: '1745864673'
+online_content_label: "Online access"
 metadata:
 - ssi:
   - date_uploaded
