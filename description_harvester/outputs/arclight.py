@@ -165,7 +165,7 @@ class Arclight():
             solrDocument (SolrCollection): a solr collection document containing nested solr component docs
         """
 
-        if record.level == "collection":
+        if record.level.lower() == "collection":
             solrDocument = SolrCollection()
             solrDocument.ead_ssi = [record.collection_id]
         else:
@@ -225,7 +225,7 @@ class Arclight():
             solrDocument.normalized_title_ssm = [solrDocument.normalized_date_ssm[0]]
         solrDocument.component_level_isim = [recursive_level]
         #solrDocument.collection_title_tesim = solrDocument.normalized_title_ssm
-        if record.level == "collection":
+        if record.level.lower() == "collection":
             solrDocument.id = record.id.replace(".", "-")
             solrDocument.unitid_ssm = [record.collection_id]
             solrDocument.unitid_tesim = [record.collection_id]

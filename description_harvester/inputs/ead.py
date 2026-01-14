@@ -116,11 +116,22 @@ class EAD:
             
         # Build the component
         record = Component()
+        record_id = None
         if "id" in elem.attrib:
-            record.id = elem.get("id")
+            record_id = elem.get("id")
         else:
             uid_el = elem.find("ead:did/ead:unitid", namespaces=ns)
-            record.id = self._text_of(uid_el)
+            record_id = self._text_of(uid_el)
+
+            if not record_id:
+                eadid_el = elem.getroottree().getroot().find(
+                    "ead:eadheader/ead:eadid",
+                    namespaces=ns
+                )
+                record_id = self._text_of(eadid_el)
+        if not record_id:
+            raise ValueError("No identifier found (@id, unitid, or eadid)")
+        record.id = record_id
 
         record.collection_id = collection_id or ""
         record.repository = repository or ""
