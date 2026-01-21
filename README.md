@@ -5,7 +5,7 @@ description_harvester is designed to be extensible and harvest archival descript
 
 description_harvester is designed to be a drop-in replacement for the ArcLight Traject indexer. It also includes a [plugin](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/manifests.py) that attempts to recognized IIIF manifests included as file versions and uses manifests to fully index digital objects from digital repositories and other sources, including item-level metadata fields, embedded text, OCR text, and transcriptions. 
 
-This is still a bit drafty, as its only tested on ASpace v2.8.0 and needs tests and better error handling. Validation is also very minimal, but there is potential to add detailed validation with `jsonschema `.
+Tested on ASpace up to v3.5.1 but needs some better error handling. Validation is also very minimal, but there is potential to add detailed validation with `jsonschema `.
 
 ## Installation
 
