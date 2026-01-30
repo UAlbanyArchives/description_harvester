@@ -459,7 +459,7 @@ class Arclight():
                     if value:
                         solr_suffix = next((k.lower() for d in self.metadata_config for k, v in d.items() if field.lower() in map(str.lower, v)), None)
                         if solr_suffix:
-                            field_name = f"dado_{field.lower().replace(" ", "_")}_{solr_suffix}"
+                            field_name = f"dado_{field.lower().replace(' ', '_')}_{solr_suffix}"
 
                             if isinstance(value, list):
                                 #setattr(solrDocument, field_name, value)
