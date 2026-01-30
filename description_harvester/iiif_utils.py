@@ -16,15 +16,22 @@ Example usage in a plugin:
 """
 
 import requests
+from requests.exceptions import Timeout, ConnectionError, RequestException
 from typing import Optional, Union, List, Dict, Any
+import time
 
 
-def fetch_manifest(url: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
-    """Fetch and parse a IIIF manifest from a URL.
+def fetch_manifest(url: str, timeout: int = 30, retries: int = 3, backoff_factor: float = 1.0) -> Optional[Dict[str, Any]]:
+    """Fetch and parse a IIIF manifest from a URL with robust timeout handling.
+    
+    Implements automatic retries with exponential backoff for timeout errors,
+    useful for slow or unreliable networks.
     
     Args:
         url: URL to the IIIF manifest (typically ending in manifest.json)
-        timeout: Request timeout in seconds (default: 10)
+        timeout: Request timeout in seconds (default: 30)
+        retries: Number of retry attempts on timeout (default: 3)
+        backoff_factor: Multiplier for exponential backoff between retries (default: 1.0)
         
     Returns:
         Parsed manifest as a dictionary, or None if fetch failed
@@ -33,17 +40,37 @@ def fetch_manifest(url: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
         >>> manifest = fetch_manifest('https://example.org/iiif/manifest.json')
         >>> if manifest:
         ...     print(manifest.get('label'))
+        >>> # For very slow systems, increase timeout and retries:
+        >>> manifest = fetch_manifest(url, timeout=60, retries=5)
     """
-    try:
-        response = requests.get(url, timeout=timeout)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Warning: Failed to fetch manifest from {url} (status {response.status_code})")
+    last_exception = None
+    
+    for attempt in range(retries):
+        try:
+            response = requests.get(url, timeout=timeout)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Warning: Failed to fetch manifest from {url} (status {response.status_code})")
+                return None
+        except Timeout as e:
+            last_exception = e
+            if attempt < retries - 1:
+                wait_time = (2 ** attempt) * backoff_factor
+                print(f"Timeout fetching {url} (attempt {attempt + 1}/{retries}). Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"Error fetching manifest from {url}: Read timeout after {retries} attempts")
+        except (ConnectionError, RequestException) as e:
+            # Don't retry on connection errors, just fail fast
+            print(f"Error fetching manifest from {url}: {type(e).__name__}: {e}")
             return None
-    except Exception as e:
-        print(f"Error fetching manifest from {url}: {e}")
-        return None
+        except Exception as e:
+            # Other unexpected errors, don't retry
+            print(f"Error fetching manifest from {url}: {e}")
+            return None
+    
+    return None
 
 
 def get_manifest_version(manifest: Dict[str, Any]) -> Optional[str]:
@@ -228,13 +255,15 @@ def extract_metadata_fields(manifest: Dict[str, Any]) -> Dict[str, Any]:
     return metadata
 
 
-def fetch_text_content(url: str, format_hint: Optional[str] = None, timeout: int = 10) -> Optional[str]:
-    """Fetch text content from various formats (plain text, hOCR, ALTO XML).
+def fetch_text_content(url: str, format_hint: Optional[str] = None, timeout: int = 30, retries: int = 3, backoff_factor: float = 1.0) -> Optional[str]:
+    """Fetch text content from various formats (plain text, hOCR, ALTO XML) with timeout handling.
     
     Args:
         url: URL to the text resource
         format_hint: MIME type or format indicator (e.g., "text/plain", "application/alto+xml")
-        timeout: Request timeout in seconds (default: 10)
+        timeout: Request timeout in seconds (default: 30)
+        retries: Number of retry attempts on timeout (default: 3)
+        backoff_factor: Multiplier for exponential backoff between retries (default: 1.0)
         
     Returns:
         Extracted text content, or None if fetch/parse failed
@@ -243,46 +272,64 @@ def fetch_text_content(url: str, format_hint: Optional[str] = None, timeout: int
         >>> text = fetch_text_content(rendering_url, format_hint="text/plain")
         >>> if text:
         ...     dao.text_content = text
+        >>> # For slow systems, customize retries:
+        >>> text = fetch_text_content(url, format_hint="text/plain", timeout=60, retries=5)
     """
-    try:
-        response = requests.get(url, timeout=timeout)
-        if response.status_code != 200:
-            print(f"Warning: Failed to fetch text from {url} (status {response.status_code})")
+    last_exception = None
+    
+    for attempt in range(retries):
+        try:
+            response = requests.get(url, timeout=timeout)
+            if response.status_code != 200:
+                print(f"Warning: Failed to fetch text from {url} (status {response.status_code})")
+                return None
+            
+            format_lower = (format_hint or "").lower()
+            
+            # Plain text
+            if "text/plain" in format_lower or ".txt" in format_lower:
+                return response.text.strip()
+            
+            # hOCR (HTML with OCR data)
+            elif "hocr" in format_lower or "text/html" in format_lower:
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    words = [span.get_text() for span in soup.find_all("span", class_="ocrx_word")]
+                    return " ".join(words).strip() if words else None
+                except ImportError:
+                    print("Warning: BeautifulSoup4 required for hOCR parsing. Install with: pip install beautifulsoup4")
+                    return None
+            
+            # ALTO XML
+            elif "alto" in format_lower or "application/xml" in format_lower:
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(response.text, "xml")
+                    words = [tag.get("CONTENT", "") for tag in soup.find_all("String")]
+                    return " ".join(words).strip() if words else None
+                except ImportError:
+                    print("Warning: BeautifulSoup4 required for ALTO parsing. Install with: pip install beautifulsoup4")
+                    return None
+            
             return None
-        
-        format_lower = (format_hint or "").lower()
-        
-        # Plain text
-        if "text/plain" in format_lower or ".txt" in format_lower:
-            return response.text.strip()
-        
-        # hOCR (HTML with OCR data)
-        elif "hocr" in format_lower or "text/html" in format_lower:
-            try:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(response.text, "html.parser")
-                words = [span.get_text() for span in soup.find_all("span", class_="ocrx_word")]
-                return " ".join(words).strip() if words else None
-            except ImportError:
-                print("Warning: BeautifulSoup4 required for hOCR parsing. Install with: pip install beautifulsoup4")
-                return None
-        
-        # ALTO XML
-        elif "alto" in format_lower or "application/xml" in format_lower:
-            try:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(response.text, "xml")
-                words = [tag.get("CONTENT", "") for tag in soup.find_all("String")]
-                return " ".join(words).strip() if words else None
-            except ImportError:
-                print("Warning: BeautifulSoup4 required for ALTO parsing. Install with: pip install beautifulsoup4")
-                return None
-        
-        return None
-        
-    except Exception as e:
-        print(f"Error fetching text from {url}: {e}")
-        return None
+            
+        except Timeout as e:
+            last_exception = e
+            if attempt < retries - 1:
+                wait_time = (2 ** attempt) * backoff_factor
+                print(f"Timeout fetching {url} (attempt {attempt + 1}/{retries}). Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"Error fetching text from {url}: Read timeout after {retries} attempts")
+        except (ConnectionError, RequestException) as e:
+            print(f"Error fetching text from {url}: {type(e).__name__}: {e}")
+            return None
+        except Exception as e:
+            print(f"Error fetching text from {url}: {e}")
+            return None
+    
+    return None
 
 
 def extract_text_from_renderings(manifest: Dict[str, Any]) -> Optional[str]:
