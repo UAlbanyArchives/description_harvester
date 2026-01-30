@@ -110,41 +110,73 @@ def extract_lang_value(obj: Union[Dict, List, str],
 
 
 def get_thumbnail_url(manifest: Dict[str, Any]) -> Optional[str]:
-    """Extract thumbnail URL from IIIF manifest (v2 or v3).
-    
-    Args:
-        manifest: Parsed IIIF manifest dictionary
-        
-    Returns:
-        Thumbnail URL string, or None if not found
-        
-    Example:
-        >>> thumbnail = get_thumbnail_url(manifest)
-        >>> if thumbnail:
-        ...     dao.thumbnail_href = thumbnail
-    """
     version = get_manifest_version(manifest)
-    
+
+    # --- explicit thumbnail in the manifest ---
     if version == "3":
         canvases = manifest.get("items", [])
         if canvases:
-            canvas = canvases[0]
-            thumbs = canvas.get("thumbnail", [])
+            thumbs = canvases[0].get("thumbnail", [])
             if isinstance(thumbs, list) and thumbs:
                 return thumbs[0].get("id") or thumbs[0].get("@id")
-    
+
     elif version == "2":
         sequences = manifest.get("sequences", [])
         if sequences:
             canvases = sequences[0].get("canvases", [])
             if canvases:
-                canvas = canvases[0]
-                thumbs = canvas.get("thumbnail")
+                thumbs = canvases[0].get("thumbnail")
                 if isinstance(thumbs, dict):
                     return thumbs.get("@id")
                 elif isinstance(thumbs, str):
                     return thumbs
-    
+
+    # --- fallback: derive from image service if present ---
+    try:
+        if version == "3":
+            canvas = manifest.get("items", [])[0]
+
+            anno_pages = canvas.get("items", [])
+            if not anno_pages:
+                return None
+
+            annos = anno_pages[0].get("items", [])
+            if not annos:
+                return None
+
+            body = annos[0].get("body", {})
+            services = body.get("service")
+
+            if not services:
+                return None
+
+            if isinstance(services, dict):
+                services = [services]
+
+            service_id = services[0].get("id") or services[0].get("@id")
+            if service_id:
+                return f"{service_id}/full/200,/0/default.jpg"
+
+        elif version == "2":
+            canvas = manifest.get("sequences", [])[0].get("canvases", [])[0]
+
+            images = canvas.get("images", [])
+            if not images:
+                return None
+
+            resource = images[0].get("resource", {})
+            service = resource.get("service")
+
+            if not isinstance(service, dict):
+                return None
+
+            service_id = service.get("@id")
+            if service_id:
+                return f"{service_id}/full/200,/0/default.jpg"
+
+    except (IndexError, KeyError, TypeError):
+        pass
+
     return None
 
 

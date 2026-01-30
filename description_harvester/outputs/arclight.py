@@ -452,9 +452,9 @@ class Arclight():
             if not digital_object.metadata is None:
                 for field, value in digital_object.metadata.items():
                     if value:
-                        solr_suffix = next((k for d in self.metadata_config for k, v in d.items() if field in v), None)
+                        solr_suffix = next((k.lower() for d in self.metadata_config for k, v in d.items() if field.lower() in map(str.lower, v)), None)
                         if solr_suffix:
-                            field_name = f"dado_{field}_{solr_suffix}"
+                            field_name = f"dado_{field.lower().replace(" ", "_")}_{solr_suffix}"
 
                             if isinstance(value, list):
                                 #setattr(solrDocument, field_name, value)
