@@ -10,7 +10,7 @@ from description_harvester.models.arclight import SolrCollection, SolrComponent
 class Arclight():
 
 
-    def __init__(self, solr, metadata_config, online_content_label="Online access"):
+    def __init__(self, solr, metadata_config, online_content_label="Online access", component_id_separator="_"):
         """
         Connects to an accessible Solr instance with pysolr.
 
@@ -20,12 +20,15 @@ class Arclight():
                 This is a list of dicts with Solr dynamic field suffixes ('ssim') as the keys, such as:
                 [ssim: [field1, field2] ssm: [field3, field4] tesim: [field5]]
             online_content_label(str): Label to display for items with online content.
-                Defaults to "View only online content"
+                Defaults to "Online access"
+            component_id_separator(str): Separator between collection ID and component ID.
+                Defaults to "_"
         """
 
         self.solr = solr
         self.metadata_config = metadata_config
         self.online_content_label = online_content_label
+        self.component_id_separator = component_id_separator
 
 
     def convert(self, record, repository_name):
@@ -138,7 +141,7 @@ class Arclight():
         return modified_text
 
 
-    def convertCollection(self, record, repository_name, has_online_content, online_item_count=0, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}):
+    def convertCollection(self, record, repository_name, has_online_content, online_item_count=0, total_component_count=0, recursive_level=0, parents=[], parent_titles=[], parent_levels=[], inherited_data={}, nest_path=""):
         """
         A recursive function to convert collection and component objects to Arclight-friendly solr docs.
         It takes a component object and converts it and any child objects to an Arclight-friendly
@@ -168,8 +171,10 @@ class Arclight():
         if record.level.lower() == "collection":
             solrDocument = SolrCollection()
             solrDocument.ead_ssi = [record.collection_id]
+            solrDocument._nest_path_ = "/"
         else:
             solrDocument = SolrComponent()
+            solrDocument._nest_path_ = nest_path
 
         solrDocument.level_ssm = [record.level.title().lower()]
         solrDocument.level_ssim = [record.level.title()]
@@ -245,7 +250,7 @@ class Arclight():
             record.component_level_isim = [recursive_level]
 
             #Arclight expects the collection id to be prepended to component ids but not to ref_ssm
-            solrDocument.id = record.collection_id.replace(".", "-") + record.id.replace(".", "-")
+            solrDocument.id = record.collection_id.replace(".", "-") + self.component_id_separator + record.id.replace(".", "-")
             solrDocument.ref_ssi = record.id.replace(".", "-")
             # dunno why this is duplicated, but it seems to be like this in the default indexer
             solrDocument.ref_ssm = [record.id.replace(".", "-"), record.id.replace(".", "-")]
@@ -487,7 +492,9 @@ class Arclight():
         for component in record.components:
             total_component_count += 1
             inherited_data["child_component_count"] = len(component.components)
-            subcomponent, has_online_content, online_item_count, total_component_count = self.convertCollection(component, repository_name, has_online_content, online_item_count, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data))
+            # Build nest_path for child components: "/0", "/0/1", "/0/1/2", etc.
+            child_nest_path = f"{nest_path}/{order_counter}" if nest_path else f"/{order_counter}"
+            subcomponent, has_online_content, online_item_count, total_component_count = self.convertCollection(component, repository_name, has_online_content, online_item_count, total_component_count, recursive_level, new_parents, new_parent_titles, new_parent_levels, copy.deepcopy(inherited_data), child_nest_path)
             order_counter += 1
             subcomponent.sort_isi = order_counter
             solrDocument.components.append(subcomponent)

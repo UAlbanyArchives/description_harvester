@@ -46,6 +46,103 @@ class TestArclightInit:
         
         assert arclight.solr == mock_solr
         assert arclight.metadata_config == metadata_config
+    
+    def test_init_with_default_separator(self):
+        """Test that default component_id_separator is '_'."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        assert arclight.component_id_separator == "_"
+    
+    def test_init_with_custom_separator(self):
+        """Test that custom component_id_separator can be set."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [], component_id_separator="-")
+        
+        assert arclight.component_id_separator == "-"
+    
+    def test_init_with_empty_separator(self):
+        """Test that component_id_separator can be empty string."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [], component_id_separator="")
+        
+        assert arclight.component_id_separator == ""
+
+
+class TestComponentIdSeparator:
+    """Test component ID separator functionality."""
+    
+    def test_component_id_with_default_separator(self):
+        """Test that component IDs use default '_' separator."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.collection_id = "coll001"  # Child needs parent's collection_id
+        child.dates = [Date(expression="1950")]
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Component ID should be collection_id + "_" + component_id
+        assert result.components[0].id == "coll001_comp001"
+    
+    def test_component_id_with_custom_separator(self):
+        """Test that component IDs use custom separator."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [], component_id_separator="-")
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.collection_id = "coll001"  # Child needs parent's collection_id
+        child.dates = [Date(expression="1950")]
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Component ID should be collection_id + "-" + component_id
+        assert result.components[0].id == "coll001-comp001"
+    
+    def test_component_id_with_empty_separator(self):
+        """Test that component IDs can have no separator."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [], component_id_separator="")
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.collection_id = "coll001"  # Child needs parent's collection_id
+        child.dates = [Date(expression="1950")]
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Component ID should be collection_id + "" + component_id (no separator)
+        assert result.components[0].id == "coll001comp001"
+    
+    def test_component_id_with_dots_replaced(self):
+        """Test that dots in IDs are replaced with hyphens before joining."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [], component_id_separator="_")
+        
+        collection = create_minimal_component("coll.001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        child = create_minimal_component("comp.001", "series", "Series 1")
+        child.collection_id = "coll.001"  # Child needs parent's collection_id
+        child.dates = [Date(expression="1950")]
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Dots should be replaced with hyphens, then joined with separator
+        assert result.components[0].id == "coll-001_comp-001"
 
 
 class TestStripText:
@@ -912,6 +1009,92 @@ class TestCustomOnlineContentLabel:
         assert result.has_online_content_ssim == ["Online access"]
 
 
+class TestConfigIntegration:
+    """Integration tests for config → Arclight initialization."""
+    
+    def test_config_loads_default_separator(self, tmp_path, monkeypatch):
+        """Test that Config loads default component_id_separator when not in config file."""
+        # Create a minimal config without component_id_separator
+        config_dir = tmp_path / ".description_harvester"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yml"
+        config_file.write_text("solr_url: http://test.com\nsolr_core: test")
+        
+        # Mock Path.home() to return tmp_path
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        
+        # Import and create Config (will read from mocked location)
+        from description_harvester.configurator import Config
+        config = Config()
+        
+        # Should have default separator
+        assert config.component_id_separator == "_"
+    
+    def test_config_loads_custom_separator(self, tmp_path, monkeypatch):
+        """Test that Config loads custom component_id_separator from config file."""
+        # Create config with custom separator
+        config_dir = tmp_path / ".description_harvester"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yml"
+        config_file.write_text('solr_url: http://test.com\nsolr_core: test\ncomponent_id_separator: "-"')
+        
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        
+        from description_harvester.configurator import Config
+        config = Config()
+        
+        assert config.component_id_separator == "-"
+    
+    def test_config_loads_empty_separator(self, tmp_path, monkeypatch):
+        """Test that Config loads empty string separator from config file."""
+        # Create config with empty separator (quoted to preserve empty string)
+        config_dir = tmp_path / ".description_harvester"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yml"
+        config_file.write_text('solr_url: http://test.com\nsolr_core: test\ncomponent_id_separator: ""')
+        
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        
+        from description_harvester.configurator import Config
+        config = Config()
+        
+        assert config.component_id_separator == ""
+        assert isinstance(config.component_id_separator, str)
+    
+    def test_arclight_receives_separator_from_config(self, tmp_path, monkeypatch):
+        """Integration test: Config → Arclight initialization with separator."""
+        # Create config with custom separator
+        config_dir = tmp_path / ".description_harvester"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yml"
+        config_file.write_text('solr_url: http://test.com\nsolr_core: test\ncomponent_id_separator: "||"')
+        
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        
+        from description_harvester.configurator import Config
+        config = Config()
+        
+        # Simulate what happens in harvest() function
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, config.metadata, config.online_content_label, config.component_id_separator)
+        
+        # Verify Arclight received the separator
+        assert arclight.component_id_separator == "||"
+        
+        # Test it actually uses it
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.collection_id = "coll001"
+        child.dates = [Date(expression="1950")]
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        assert result.components[0].id == "coll001||comp001"
+
+
 class TestAddToSolr:
     """Test adding documents to Solr."""
     
@@ -935,3 +1118,131 @@ class TestAddToSolr:
         assert isinstance(call_args, list)
         assert len(call_args) == 1
         assert isinstance(call_args[0], dict)
+
+
+class TestNestPath:
+    """Test _nest_path_ field for Solr 9 nested document support."""
+    
+    def test_collection_nest_path(self):
+        """Test that collection documents have _nest_path_ = '/'."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        assert result._nest_path_ == "/"
+    
+    def test_single_level_component_nest_path(self):
+        """Test that direct children of collection get _nest_path_ = '/0', '/1', etc."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        # Add multiple children
+        for i in range(3):
+            child = create_minimal_component(f"comp00{i+1}", "series", f"Series {i+1}")
+            child.dates = [Date(expression="1950")]
+            collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        assert result.components[0]._nest_path_ == "/0"
+        assert result.components[1]._nest_path_ == "/1"
+        assert result.components[2]._nest_path_ == "/2"
+    
+    def test_nested_component_nest_path(self):
+        """Test that deeply nested components get correct hierarchical paths."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        # Create collection
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        # Create series (level 1)
+        series = create_minimal_component("series001", "series", "Series 1")
+        series.dates = [Date(expression="1950")]
+        
+        # Create file under series (level 2)
+        file_comp = create_minimal_component("file001", "file", "File 1")
+        file_comp.dates = [Date(expression="1950")]
+        series.components.append(file_comp)
+        
+        # Create item under file (level 3)
+        item_comp = create_minimal_component("item001", "item", "Item 1")
+        item_comp.dates = [Date(expression="1950")]
+        file_comp.components.append(item_comp)
+        
+        collection.components.append(series)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Verify nest paths at each level
+        assert result._nest_path_ == "/"
+        assert result.components[0]._nest_path_ == "/0"  # series
+        assert result.components[0].components[0]._nest_path_ == "/0/0"  # file
+        assert result.components[0].components[0].components[0]._nest_path_ == "/0/0/0"  # item
+    
+    def test_multiple_branch_nest_paths(self):
+        """Test nest paths with multiple branches in hierarchy."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        # Create two series
+        for series_idx in range(2):
+            series = create_minimal_component(f"series00{series_idx+1}", "series", f"Series {series_idx+1}")
+            series.dates = [Date(expression="1950")]
+            
+            # Add two files to each series
+            for file_idx in range(2):
+                file_comp = create_minimal_component(f"file{series_idx}{file_idx}", "file", f"File {file_idx+1}")
+                file_comp.dates = [Date(expression="1950")]
+                series.components.append(file_comp)
+            
+            collection.components.append(series)
+        
+        result = arclight.convert(collection, "Test Repository")
+        
+        # Series nest paths
+        assert result.components[0]._nest_path_ == "/0"
+        assert result.components[1]._nest_path_ == "/1"
+        
+        # File nest paths under series 0
+        assert result.components[0].components[0]._nest_path_ == "/0/0"
+        assert result.components[0].components[1]._nest_path_ == "/0/1"
+        
+        # File nest paths under series 1
+        assert result.components[1].components[0]._nest_path_ == "/1/0"
+        assert result.components[1].components[1]._nest_path_ == "/1/1"
+    
+    def test_nest_path_in_dict_output(self):
+        """Test that _nest_path_ is included in to_dict() output for Solr indexing."""
+        mock_solr = Mock()
+        arclight = Arclight(mock_solr, [])
+        
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+        
+        child = create_minimal_component("comp001", "series", "Series 1")
+        child.dates = [Date(expression="1950")]
+        collection.components.append(child)
+        
+        result = arclight.convert(collection, "Test Repository")
+        result_dict = result.to_dict()
+        
+        # Check that _nest_path_ is in the dict output
+        assert "_nest_path_" in result_dict
+        assert result_dict["_nest_path_"] == "/"
+        
+        # Check nested component
+        assert len(result_dict["components"]) == 1
+        assert "_nest_path_" in result_dict["components"][0]
+        assert result_dict["components"][0]["_nest_path_"] == "/0"

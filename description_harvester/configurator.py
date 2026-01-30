@@ -10,6 +10,7 @@ class Config:
         "solr_core": "arclight",
         "solr_url": "https://solr.example.com:8984/solr",
         "online_content_label": "Online access",
+        "component_id_separator": "_",
     }
 
     def __init__(self):
@@ -19,6 +20,8 @@ class Config:
 
         # Apply defaults, then override
         for k, v in {**self.DEFAULTS, **config}.items():
+            if v is None and k not in config:
+                v = self.DEFAULTS.get(k)
             setattr(self, k, v)
 
 

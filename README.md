@@ -22,8 +22,10 @@ solr_url: http://127.0.0.1:8983/solr
 solr_core: blacklight-core
 last_query: 0
 cache_expiration: 3600
+component_id_separator: "_"
 online_content_label: "Online access"
 ```
+The `component_id_separator` allows for a customizable separator between the collection and component IDs in ArcLight URLs. This can be set to `component_id_separator: ""` for pre-ArcLight v1.1.0 defaults which had no separator. This will default to `_` if this setting isn't set in `config.yml` as ArcLight now does.
 
 The `online_content_label` setting allows you to customize the label displayed for items with online content in ArcLight. The default is "Online access".
 
