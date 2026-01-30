@@ -78,7 +78,7 @@ class TestFetchManifest:
         result = fetch_manifest("https://example.org/manifest.json")
         
         assert result == SAMPLE_MANIFEST_V3
-        mock_get.assert_called_once_with("https://example.org/manifest.json", timeout=10)
+        mock_get.assert_called_once_with("https://example.org/manifest.json", timeout=30)
 
     @patch('description_harvester.iiif_utils.requests.get')
     def test_fetch_manifest_404(self, mock_get):
