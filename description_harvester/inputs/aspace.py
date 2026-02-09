@@ -10,7 +10,7 @@ from pathlib import Path
 from asnake.client import ASnakeClient
 import asnake.logging as logging
 from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
-from description_harvester.utils import iso2DACS
+from description_harvester.utils import iso2DACS, InvalidDateError
 from description_harvester.plugins import Plugin, import_plugins
 
 logging.setup_logging(stream=sys.stdout, level='INFO')
@@ -281,25 +281,33 @@ class ArchivesSpace():
 
         for date in apiObject["dates"]:
             dateObj = Date()
-            if "expression" in date.keys():
-                dateObj.expression = date['expression']
-            elif "begin" in date.keys() and "end" in date.keys():
-                dateObj.expression = f"{iso2DACS(date['begin'])} - {iso2DACS(date['end'])}"
-            elif "begin" in date.keys():
-                dateObj.expression = iso2DACS(date['begin'])
-            if "begin" in date.keys():
-                dateObj.begin = date['begin']
-                if date['date_type'].lower() == "bulk":
-                    dateObj.date_type = "bulk"
-                elif date['date_type'].lower() == "inclusive":
-                    dateObj.date_type = "inclusive"
-                if "end" in date.keys():
-                    dateObj.end = date['end']
-                elif "end" in date.keys():
+            try:
+                if "expression" in date.keys():
+                    dateObj.expression = date['expression']
+                elif "begin" in date.keys() and "end" in date.keys():
                     dateObj.expression = f"{iso2DACS(date['begin'])} - {iso2DACS(date['end'])}"
-                else:
+                elif "begin" in date.keys():
                     dateObj.expression = iso2DACS(date['begin'])
-            record.dates.append(dateObj)
+                if "begin" in date.keys():
+                    dateObj.begin = date['begin']
+                    if date['date_type'].lower() == "bulk":
+                        dateObj.date_type = "bulk"
+                    elif date['date_type'].lower() == "inclusive":
+                        dateObj.date_type = "inclusive"
+                    if "end" in date.keys():
+                        dateObj.end = date['end']
+                    elif "end" in date.keys():
+                        dateObj.expression = f"{iso2DACS(date['begin'])} - {iso2DACS(date['end'])}"
+                    else:
+                        dateObj.expression = iso2DACS(date['begin'])
+                record.dates.append(dateObj)
+            except InvalidDateError as e:
+                # Print diagnostic information before re-raising
+                record_id = apiObject.get('ead_id') or apiObject.get('ref_id', 'unknown')
+                print(f"\nERROR: Invalid date in record '{record_id}': {e}")
+                print(f"  Problematic date data: {date}")
+                print(f"  Record title: {apiObject.get('title', 'N/A')}")
+                raise
         
         if apiObject["level"].lower() == "collection":
             record.id = apiObject["ead_id"]

@@ -7,6 +7,10 @@ from hashlib import md5
 from jsonmodels.errors import ValidationError
 from description_harvester.models.description import Component
 
+class InvalidDateError(Exception):
+	"""Raised when a date string cannot be parsed into DACS format"""
+	pass
+
 #Functions to make DACS dates from timestamps and ISO dates
 def stamp2DACS(timestamp):
 	calendar = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}
@@ -22,23 +26,30 @@ def stamp2DACS(timestamp):
 	
 def iso2DACS(normalDate):
 	calendar = {'01': 'January', '02': 'February', '03': 'March', '04': 'April', '05': 'May', '06': 'June', '07': 'July', '08': 'August', '09': 'September', '10': 'October', '11': 'November', '12': 'December'}
-	if "-" in normalDate:
-		if normalDate.count('-') == 1:
-			year = normalDate.split("-")[0]
-			month = normalDate.split("-")[1]
-			displayDate = year + " " + calendar[month]
-		else:
-			year = normalDate.split("-")[0]
-			month = normalDate.split("-")[1]
-			day = normalDate.split("-")[2]
-			if day.startswith("0"):
-				displayDay = day[1:]
+	try:
+		if "-" in normalDate:
+			if normalDate.count('-') == 1:
+				year = normalDate.split("-")[0]
+				month = normalDate.split("-")[1].zfill(2)
+				if month not in calendar:
+					raise InvalidDateError(f"Invalid month value: {month} in date {normalDate}")
+				displayDate = year + " " + calendar[month]
 			else:
-				displayDay = day
-			displayDate = year + " " + calendar[month] + " " + displayDay
-	else:
-		displayDate = normalDate
-	return displayDate
+				year = normalDate.split("-")[0]
+				month = normalDate.split("-")[1].zfill(2)
+				day = normalDate.split("-")[2].zfill(2)
+				if month not in calendar:
+					raise InvalidDateError(f"Invalid month value: {month} in date {normalDate}")
+				if day.startswith("0"):
+					displayDay = day[1:]
+				else:
+					displayDay = day
+				displayDate = year + " " + calendar[month] + " " + displayDay
+		else:
+			displayDate = normalDate
+		return displayDate
+	except (KeyError, IndexError, ValueError) as e:
+		raise InvalidDateError(f"Failed to parse date '{normalDate}': {str(e)}")
 
 
 def extract_years(date_string):
