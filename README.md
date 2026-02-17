@@ -140,23 +140,25 @@ Plugins let you add institution-specific customization without modifying the cor
 
 ### Creating a Plugin
 
-1. **Copy the template**: Copy [default.py](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/default.py) to `~/.description_harvester/` (or use `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable)
+1. **Copy the template**: Copy [default.py](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/plugins/default.py) to `~/.description_harvester/` (or use `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable). You can rename the file.
 
-2. **Rename the class**: Change `DefaultPlugin` to something descriptive (e.g., `MyInstitutionPlugin`)
-
-3. **Update plugin_name**: Set a unique identifier:
+2. **Rename the class**: The class name is optional and only for your readability. You could use any class name, but the `plugin_name` class variable must be unique to your implementation.:
    ```python
    class MyInstitutionPlugin(Plugin):
-       plugin_name = "my_institution"
+       plugin_name = "my_institution_plugin"
    ```
 
-4. **Implement methods**: Override one or both customization hooks:
+4. **Implement methods**: Override any combination of customization hooks:
 
-   - **`custom_repository(resource)`**: Customize repository names
+   - **`custom_repository(self, resource)`**: Customize repository names
      - Input: [ArchivesSpace resource API object](https://archivesspace.github.io/archivesspace/api/#get-a-resource)
      - Output: Repository name string or `None` for default behavior
    
-   - **`update_dao(dao)`**: Enrich digital objects
+   - **`update_record_id(self, record_id, record)`**: Customize record IDs
+     - Input: Generated record ID string and [Component](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py) object
+     - Output: Custom ID string or `None` for default behavior
+   
+   - **`update_dao(self, dao)`**: Enrich digital objects
      - Input: [DigitalObject](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/models/description.py) with identifier, label, metadata, etc.
      - Output: Modified DigitalObject with additional metadata
 
@@ -166,6 +168,8 @@ Plugins are automatically loaded from (in order):
 1. Built-in plugins in the package (e.g., `default.py`)
 2. `~/.description_harvester/` directory
 3. Custom directory set via `DESCRIPTION_HARVESTER_PLUGIN_DIR` environment variable
+
+**Note**: The .py filename doesn't matter - plugin identification is based on the unique `plugin_name` class variable. You can have multiple plugin classes in a single .py file, or split them across multiple files.
 
 ### Example Plugin
 
@@ -181,6 +185,12 @@ class MyInstitutionPlugin(Plugin):
         if resource['id_0'].startswith('sc'):
             return "Special Collections & Archives"
         return None  # Use default for others
+    
+    def update_record_id(self, record_id, record):
+        # Add repository prefix to collection-level IDs
+        if record.level and record.level.lower() == "collection":
+            return f"sc_{record_id}"
+        return None  # Use default for component IDs
     
     def update_dao(self, dao):
         # Enrich digital objects with IIIF manifest data
@@ -226,6 +236,12 @@ def update_dao(self, dao):
 ```
 
 See the [iiif_utils module documentation](https://github.com/UAlbanyArchives/description_harvester/blob/main/description_harvester/iiif_utils.py) for all available functions.
+
+### SSL Bypass
+
+You may encounter SSL certificate verification errors when fetching IIIF manifests, indicating that the server is not sending the complete certificate chain.
+
+The recommended solution is to work with the server administrator to fix their certificate chain configuration. But if you do need to bypass SSL verification, you can do this by setting the DESCRIPTION_HARVESTER_VERIFY_SSL environment variable to "false".
 
 ## Use as a library
 

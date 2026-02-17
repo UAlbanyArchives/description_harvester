@@ -10,11 +10,12 @@ class Plugin(ABC):
     Plugins allow you to add institution-specific logic for:
     - Customizing repository names based on collection data
     - Enriching digital objects with data from external sources (e.g., IIIF manifests)
+    - Transforming record IDs based on collection or component data
     
     How to create a plugin:
     1. Copy description_harvester/plugins/default.py to ~/.description_harvester/
     2. Rename the class (e.g., MyInstitutionPlugin) and update plugin_name
-    3. Implement custom_repository() and/or update_dao() methods
+    3. Implement custom_repository(), update_dao(), and/or update_record_id() methods
     4. The plugin will be automatically discovered and loaded
     
     Plugins are loaded from (in order):
@@ -58,6 +59,18 @@ class Plugin(ABC):
             
         Returns:
             DigitalObject: Updated digital object with additional metadata
+        """
+        pass
+
+    def update_record_id(self, record_id, record):
+        """Override to customize record IDs based on collection or component data.
+        
+        Args:
+            record_id (str): The generated record ID
+            record (Component): The record object being processed
+            
+        Returns:
+            str or None: Custom record ID, or None to use default
         """
         pass
 

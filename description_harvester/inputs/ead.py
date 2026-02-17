@@ -131,7 +131,7 @@ class EAD:
                 record_id = self._text_of(eadid_el)
         if not record_id:
             raise ValueError("No identifier found (@id, unitid, or eadid)")
-        record.id = record_id
+        record.id = record_id.replace(" ", "_")
 
         record.collection_id = collection_id or ""
         record.repository = repository or ""
@@ -168,7 +168,7 @@ class EAD:
         self._parse_containers(elem, did, ns, record)
         
         # Parse child components recursively
-        # Children can be in either <dsc> (top-level) or directly nested within <c> elements
+        # Children can be in either <dsc> (top-level) or directly nested within <c> or <c0X> elements
         if elem is not None:
             # First check for <dsc> (top-level children)
             dsc = elem.find("ead:dsc", namespaces=ns)
@@ -178,7 +178,8 @@ class EAD:
                         local = etree.QName(child).localname
                     except Exception:
                         continue
-                    if local and local.startswith('c'):
+                    # Check if element is a valid component: <c>, <c01> through <c12>
+                    if local and (local == 'c' or (local.startswith('c') and local[1:].isdigit() and len(local) == 3)):
                         # Recursively call readToModel for child component
                         child_comp = self.readToModel(
                             child,
@@ -190,18 +191,24 @@ class EAD:
                         )
                         record.components.append(child_comp)
             
-            # Also check for nested <c> elements (children within component)
-            for child in elem.findall("ead:c", namespaces=ns):
-                # Recursively call readToModel for nested child component
-                child_comp = self.readToModel(
-                    child,
-                    collection_id,
-                    repository,
-                    collection_name,
-                    ns,
-                    recursive_level=recursive_level + 1
-                )
-                record.components.append(child_comp)
+            # Also check for nested <c> or <c0X> elements (children within component)
+            for child in elem:
+                try:
+                    local = etree.QName(child).localname
+                except Exception:
+                    continue
+                # Check if element is a valid component: <c>, <c01> through <c12>
+                if local and (local == 'c' or (local.startswith('c') and local[1:].isdigit() and len(local) == 3)):
+                    # Recursively call readToModel for nested child component
+                    child_comp = self.readToModel(
+                        child,
+                        collection_id,
+                        repository,
+                        collection_name,
+                        ns,
+                        recursive_level=recursive_level + 1
+                    )
+                    record.components.append(child_comp)
         
         return record
 

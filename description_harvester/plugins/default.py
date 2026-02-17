@@ -39,6 +39,40 @@ class DefaultPlugin(Plugin):
 		#     return "National Death Penalty Archive"
 		# return None
 
+	def update_record_id(self, record_id, record):
+		"""Customize record IDs based on collection or component data.
+		
+		Args:
+			record_id (str): The initially generated record ID
+			record (Component): The record object containing fields like:
+				- id: The record identifier
+				- level: Resource level (collection, series, file, etc.)
+				- collection_id: The collection's EAD ID
+				- collection_name: The collection name
+				- repository: Repository name
+		
+		Returns:
+			str: Custom record ID, or None to use default behavior
+		
+		Example:
+			# Add repository prefix to all IDs
+			if record.repository == "Special Collections":
+				return f"sc_{record_id}"
+			return None
+		
+		Example for component-level customization:
+			# Add level indicators to component IDs
+			level_prefix = record.level[:3].lower() if record.level else ""
+			if level_prefix:
+				return f"{level_prefix}_{record_id}"
+			return None
+		"""
+		pass
+		# Uncomment to implement custom logic:
+		# if record.level and record.level.lower() != "collection":
+		#     return f"{record.collection_id}_{record_id}"
+		# return None
+
 	def update_dao(self, dao):
 		"""Enrich digital object with additional data from external sources.
 		

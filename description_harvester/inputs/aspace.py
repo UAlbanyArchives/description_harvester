@@ -310,15 +310,21 @@ class ArchivesSpace():
                 raise
         
         if apiObject["level"].lower() == "collection":
-            record.id = apiObject["ead_id"]
+            record.id = apiObject["ead_id"].replace(" ", "_")
             record.collection_id = apiObject["ead_id"]
             record.collection_name = apiObject["title"]
             collection_name = record.collection_name
         else:
             # Prepending aspace_ to be consistent with the ASpace EAD exporter
-            record.id = "aspace_" + apiObject["ref_id"]
+            record.id = "aspace_" + apiObject["ref_id"].replace(" ", "_")
             record.collection_id = eadid
             record.collection_name = collection_name
+
+        # Allow plugin overrides for record IDs
+        for plugin in self.plugins:
+            custom_id = plugin.update_record_id(record.id, record)
+            if custom_id:
+                record.id = custom_id
 
         # Set repository. Can be overridden by plugin.
         #record.repository = self.repo_name

@@ -16,9 +16,10 @@ Example usage in a plugin:
 """
 
 import requests
-from requests.exceptions import Timeout, ConnectionError, RequestException
+from requests.exceptions import Timeout, ConnectionError, RequestException, SSLError
 from typing import Optional, Union, List, Dict, Any
 import time
+import os
 
 
 def fetch_manifest(url: str, timeout: int = 30, retries: int = 3, backoff_factor: float = 1.0) -> Optional[Dict[str, Any]]:
@@ -26,6 +27,9 @@ def fetch_manifest(url: str, timeout: int = 30, retries: int = 3, backoff_factor
     
     Implements automatic retries with exponential backoff for timeout errors,
     useful for slow or unreliable networks.
+    
+    SSL certificate verification can be disabled via the DESCRIPTION_HARVESTER_VERIFY_SSL
+    environment variable if needed (set to 'false').
     
     Args:
         url: URL to the IIIF manifest (typically ending in manifest.json)
@@ -36,6 +40,9 @@ def fetch_manifest(url: str, timeout: int = 30, retries: int = 3, backoff_factor
     Returns:
         Parsed manifest as a dictionary, or None if fetch failed
         
+    Raises:
+        Timeouts are retried automatically. Other errors are reported and None is returned.
+        
     Example:
         >>> manifest = fetch_manifest('https://example.org/iiif/manifest.json')
         >>> if manifest:
@@ -45,14 +52,23 @@ def fetch_manifest(url: str, timeout: int = 30, retries: int = 3, backoff_factor
     """
     last_exception = None
     
+    # Check environment variable for SSL verification setting
+    env_verify = os.environ.get("DESCRIPTION_HARVESTER_VERIFY_SSL", "true").lower()
+    verify_ssl = env_verify != "false"
+    
     for attempt in range(retries):
         try:
-            response = requests.get(url, timeout=timeout)
+            response = requests.get(url, timeout=timeout, verify=verify_ssl)
             if response.status_code == 200:
                 return response.json()
             else:
                 print(f"Warning: Failed to fetch manifest from {url} (status {response.status_code})")
                 return None
+        except SSLError as e:
+            # SSL errors - don't retry, but provide helpful message
+            print(f"Error fetching manifest from {url}: SSL certificate verification failed")
+            print(f"  You can set environment variable: DESCRIPTION_HARVESTER_VERIFY_SSL=false")
+            return None
         except Timeout as e:
             last_exception = e
             if attempt < retries - 1:
@@ -258,6 +274,9 @@ def extract_metadata_fields(manifest: Dict[str, Any]) -> Dict[str, Any]:
 def fetch_text_content(url: str, format_hint: Optional[str] = None, timeout: int = 30, retries: int = 3, backoff_factor: float = 1.0) -> Optional[str]:
     """Fetch text content from various formats (plain text, hOCR, ALTO XML) with timeout handling.
     
+    SSL certificate verification can be disabled via the DESCRIPTION_HARVESTER_VERIFY_SSL
+    environment variable if needed (set to 'false').
+    
     Args:
         url: URL to the text resource
         format_hint: MIME type or format indicator (e.g., "text/plain", "application/alto+xml")
@@ -277,9 +296,13 @@ def fetch_text_content(url: str, format_hint: Optional[str] = None, timeout: int
     """
     last_exception = None
     
+    # Check environment variable for SSL verification setting
+    env_verify = os.environ.get("DESCRIPTION_HARVESTER_VERIFY_SSL", "true").lower()
+    verify_ssl = env_verify != "false"
+    
     for attempt in range(retries):
         try:
-            response = requests.get(url, timeout=timeout)
+            response = requests.get(url, timeout=timeout, verify=verify_ssl)
             if response.status_code != 200:
                 print(f"Warning: Failed to fetch text from {url} (status {response.status_code})")
                 return None
@@ -314,6 +337,12 @@ def fetch_text_content(url: str, format_hint: Optional[str] = None, timeout: int
             
             return None
             
+        except SSLError as e:
+            # SSL errors - don't retry, but provide helpful message
+            print(f"Error fetching text from {url}: SSL certificate verification failed")
+            print(f"  Details: {e}")
+            print(f"  Set environment variable: DESCRIPTION_HARVESTER_VERIFY_SSL=false")
+            return None
         except Timeout as e:
             last_exception = e
             if attempt < retries - 1:
@@ -456,6 +485,9 @@ def enrich_dao_from_manifest(dao, manifest_url: str = None, manifest: Dict[str, 
     
     Populates: thumbnail_href, rights_statement, text_content, and metadata fields.
     Either provide manifest_url (to fetch) or pre-fetched manifest dict.
+    
+    SSL certificate verification can be disabled via the DESCRIPTION_HARVESTER_VERIFY_SSL
+    environment variable if needed (set to 'false').
     
     Args:
         dao: DigitalObject instance to enrich
