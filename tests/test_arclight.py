@@ -304,7 +304,8 @@ class TestConvertDates:
         
         result = arclight.convert(comp, "Test Repository")
         
-        assert result.date_range_isim == list(range(1950, 1961))
+        # assert result.date_range_isim == list(range(1950, 1961))
+        assert result.date_range_drsi == "[1950 TO 1960]"
         assert "1950-1960" in result.unitdate_ssm
     
     def test_convert_bulk_date(self):

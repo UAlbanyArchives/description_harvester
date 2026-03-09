@@ -182,6 +182,8 @@ class Arclight():
         dates = []
         string_dates = []
         date_set = []
+        date_range_begin = None
+        date_range_end = None
         for date in record.dates:
             if getattr(date, "date_type", None) == "bulk":
                 string_date = "bulk "
@@ -197,7 +199,15 @@ class Arclight():
                 dates.append(date.begin)
                 string_date += date.begin
             string_dates.append(string_date)
-            
+
+            # Caclulate date ranges
+            if getattr(date, "begin", None):
+                if not date_range_begin or date.begin < date_range_begin:
+                    date_range_begin = date.begin
+            if getattr(date, "end", None):
+                if not date_range_end or date.end < date_range_end:
+                    date_range_end = date.end
+            """
             if getattr(date, "begin", None) != None:
                 date_set.append(int(date.begin.split("-")[0]))
                 if getattr(date, "end", None) != None:
@@ -208,9 +218,12 @@ class Arclight():
                     date_list = list(range(min(date_set), max(date_set) + 1))
                 except:
                     print (f"\tWARNING: Unable to extract year range for expression-only date {date.expression}. Date facet will not work for this component.")
+            """
 
-        if len(date_set) > 0:
-            solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
+        if date_range_begin and date_range_end:
+            solrDocument.date_range_drsi = f"[{date_range_begin} TO {date_range_end}]"
+        #if len(date_set) > 0:
+        #    solrDocument.date_range_isim = list(range(min(date_set), max(date_set) + 1))
         solrDocument.unitdate_ssm = dates
         solrDocument.normalized_date_ssm = [", ".join(string_dates)]
         

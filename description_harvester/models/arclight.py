@@ -49,6 +49,8 @@ class SolrCollection(models.Base):
     unitdate_ssm = fields.ListField(str)
     # this is a list of all years
     date_range_isim = fields.ListField(int)
+    # Date Renge Field
+    date_range_drsi = fields.StringField()
     normalized_date_ssm = fields.ListField(str)
     # We don't need other date fields if we add them as labels withing unidate_ssm
     #unitdate_bulk_ssm = fields.ListField(str)
