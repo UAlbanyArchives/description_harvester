@@ -68,6 +68,7 @@ class TestFetchManifest:
     """Tests for fetch_manifest function."""
 
     @patch('description_harvester.iiif_utils.requests.get')
+    @patch.dict('os.environ', {'DESCRIPTION_HARVESTER_VERIFY_SSL': 'true'})
     def test_fetch_manifest_success(self, mock_get):
         """Test successful manifest fetch."""
         mock_response = Mock()
@@ -81,6 +82,7 @@ class TestFetchManifest:
         mock_get.assert_called_once_with("https://example.org/manifest.json", timeout=30, verify=True)
 
     @patch('description_harvester.iiif_utils.requests.get')
+    @patch.dict('os.environ', {'DESCRIPTION_HARVESTER_VERIFY_SSL': 'true'})
     def test_fetch_manifest_404(self, mock_get):
         """Test manifest fetch with 404 error."""
         mock_response = Mock()
@@ -92,6 +94,7 @@ class TestFetchManifest:
         assert result is None
 
     @patch('description_harvester.iiif_utils.requests.get')
+    @patch.dict('os.environ', {'DESCRIPTION_HARVESTER_VERIFY_SSL': 'true'})
     def test_fetch_manifest_exception(self, mock_get):
         """Test manifest fetch with network exception."""
         mock_get.side_effect = Exception("Network error")
@@ -264,6 +267,7 @@ class TestFetchTextContent:
     """Tests for fetch_text_content function."""
 
     @patch('description_harvester.iiif_utils.requests.get')
+    @patch.dict('os.environ', {'DESCRIPTION_HARVESTER_VERIFY_SSL': 'true'})
     def test_fetch_plain_text(self, mock_get):
         """Test fetching plain text content."""
         mock_response = Mock()
@@ -276,6 +280,7 @@ class TestFetchTextContent:
         assert result == "Sample plain text"
 
     @patch('description_harvester.iiif_utils.requests.get')
+    @patch.dict('os.environ', {'DESCRIPTION_HARVESTER_VERIFY_SSL': 'true'})
     def test_fetch_text_404(self, mock_get):
         """Test fetching text with 404 error."""
         mock_response = Mock()
@@ -287,6 +292,7 @@ class TestFetchTextContent:
         assert result is None
 
     @patch('description_harvester.iiif_utils.requests.get')
+    @patch.dict('os.environ', {'DESCRIPTION_HARVESTER_VERIFY_SSL': 'true'})
     def test_fetch_text_no_format_hint(self, mock_get):
         """Test fetching text without format hint."""
         mock_response = Mock()
