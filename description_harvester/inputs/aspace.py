@@ -59,6 +59,22 @@ class ArchivesSpace():
     def plugin_map(self):
         return Plugin.registry
 
+    def _preferred_collection_id(self, resource):
+        """
+        Prefer ArchivesSpace id_0..id_3 joined with dots, and fall back to ead_id.
+        """
+        id_parts = [resource.get(k, "").strip() for k in ("id_0", "id_1", "id_2", "id_3")]
+        id_parts = [part for part in id_parts if part]
+        if id_parts:
+            return ".".join(id_parts)
+        return (resource.get("ead_id") or "").strip()
+
+    def _normalized_arclight_id(self, identifier):
+        """
+        Match ArcLight::NormalizedId behavior.
+        """
+        return identifier.strip().replace(".", "-")
+
     def fetch(self, identifier, use_uri=False):
         """
         Return an ArchivesSpace record using either a resource ID or a URI.
@@ -169,7 +185,7 @@ class ArchivesSpace():
             if not "ead_id" in resource.keys() or len(resource["ead_id"]) < 1:
                 print (f"ERROR: not EAD ID for {resource['id_0']}.")
             else:
-                eadid = resource["ead_id"]
+                collection_id = self._preferred_collection_id(resource)
 
                 # Allow plugin overrides for repository names
                 for plugin in self.plugins:
@@ -177,8 +193,8 @@ class ArchivesSpace():
                     if repo_name:
                         self.repo_name = repo_name
 
-                self.current_id_0 = eadid
-                record = self.readToModel(resource, eadid, resource['uri'])
+                self.current_id_0 = collection_id
+                record = self.readToModel(resource, collection_id, resource['uri'])
 
                 return record
 
@@ -200,7 +216,7 @@ class ArchivesSpace():
             print (f"\n{resource['id_0']}: {resource['title']} is an Unpublished record")
             return None
         else:
-            eadid = resource["ead_id"]
+            collection_id = self._preferred_collection_id(resource)
 
             # Allow plugin overrides for repository names
             for plugin in self.plugins:
@@ -208,8 +224,8 @@ class ArchivesSpace():
                 if repo_name:
                     self.repo_name = repo_name
             
-            self.current_id_0 = eadid
-            record = self.readToModel(resource, eadid, resource['uri'])
+            self.current_id_0 = collection_id
+            record = self.readToModel(resource, collection_id, resource['uri'])
             
             return record
     
@@ -241,9 +257,10 @@ class ArchivesSpace():
         if len(fullList) < 1:
             print ("No collections present.")
         else:
-            for collection_uri in fullList:
-                resource = self.client.get(f"repositories/{str(self.repo)}/resources/{collection_uri}").json()
-                records_ids.append(resource["id_0"])
+            for aspace_id in fullList:
+                resource = self.client.get(f"repositories/{str(self.repo)}/resources/{aspace_id}").json()
+                collection_id = self._preferred_collection_id(resource)
+                records_ids.append((collection_id, aspace_id))
 
         return records_ids
 
@@ -310,8 +327,9 @@ class ArchivesSpace():
                 raise
         
         if apiObject["level"].lower() == "collection":
-            record.id = apiObject["ead_id"].replace(" ", "_")
-            record.collection_id = apiObject["ead_id"]
+            collection_id = self._preferred_collection_id(apiObject)
+            record.id = self._normalized_arclight_id(collection_id)
+            record.collection_id = collection_id
             record.collection_name = apiObject["title"]
             collection_name = record.collection_name
         else:

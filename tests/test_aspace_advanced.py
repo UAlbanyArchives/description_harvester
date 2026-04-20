@@ -323,4 +323,4 @@ def test_read_since_and_all_resource_ids(monkeypatch, make_aspace):
     }
     aspace = make_aspace(routes)
     assert aspace.read_since(12345) == [100, 200]
-    assert aspace.all_resource_ids() == ["r10", "r20"]
+    assert aspace.all_resource_ids() == [("r10", 10), ("r20", 20)]

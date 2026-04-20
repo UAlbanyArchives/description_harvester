@@ -70,7 +70,7 @@ def handle_deletions(solr_url, solr_core, collection_ids):
     solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=True)
     solr.ping()
     for collection_id in collection_ids:
-        solr.delete(id=collection_id.replace(".", "-"))
+        solr.delete(id=collection_id.strip().replace(".", "-"))
         print(f"\tDeleted {collection_id}")
 
 def harvest(args=None):
@@ -127,17 +127,20 @@ def harvest(args=None):
                 doc_count += 1
 
         if args.new:
-            for cid in source.all_resource_ids():
-                results = solr.search(f"id:{cid.replace('.', '-')}", rows=1, fl="id")
+            for collection_id, aspace_id in source.all_resource_ids():
+                if not collection_id:
+                    print(f"\tSkipping ASpace resource {aspace_id} (no id_0..id_3 or ead_id)")
+                    continue
+                results = solr.search(f"id:{collection_id.strip().replace('.', '-')}", rows=1, fl="id")
                 if results.hits == 0:
-                    index_record(args, arclight, source, cid, repository_name)
+                    index_record(args, arclight, source, aspace_id, repository_name, use_uri=True)
                     doc_count += 1
                 else:
-                    print(f"\tSkipping {cid} (already exists)")
+                    print(f"\tSkipping {collection_id} (already exists)")
 
         if args.all:
-            for cid in source.all_resource_ids():
-                index_record(args, arclight, source, cid, repository_name)
+            for collection_id, aspace_id in source.all_resource_ids():
+                index_record(args, arclight, source, aspace_id, repository_name, use_uri=True)
                 doc_count += 1
 
         if args.id:

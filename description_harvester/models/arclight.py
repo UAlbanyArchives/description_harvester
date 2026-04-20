@@ -173,7 +173,6 @@ class SolrCollection(models.Base):
     containers_ssim = fields.ListField(str)
     digital_objects_ssm = fields.ListField(str)
     components = fields.ListField()
-    total_component_count_is = fields.IntField()
     online_item_count_is = fields.IntField()
 
     # From DAO records
@@ -199,6 +198,5 @@ class SolrComponent(SolrCollection):
     child_component_count_isi = fields.ListField(int)
     parent_access_restrict_tesm = fields.ListField(str)
     parent_access_terms_tesm = fields.ListField(str)
-    parent_levels_ssm = fields.ListField(str)
     ref_ssm = fields.ListField(str)
     ref_ssi = fields.StringField()

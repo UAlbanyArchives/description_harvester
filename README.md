@@ -77,6 +77,13 @@ You can provide one or more IDs to index using a resource's id_0` field
 
 `harvest --id mss123 apap106`
 
+For resources that use multipart identifiers in ArchivesSpace, pass the full identifier joined with dots to `--id` (matching `id_0.id_1.id_2.id_3` with only the parts that exist).
+
+Examples:
+
+`id_0=ua600, id_1=007` -> `harvest --id ua600.007`
+`id_0=mss, id_1=123, id_2=a` -> `harvest --id mss.123.a`
+
 ### Index by URI
 
 You can also use integers from ASpace URIs for resource, such as 263 for `https://my.aspace.edu/resources/263`
@@ -94,6 +101,18 @@ Index collections modified in the past day: `harvest --today`
 Index collections modified since las run: `harvest --updated`
 
 Index collections not already in the index: `harvest --new`
+
+### Collection ID behavior (ArchivesSpace)
+
+When indexing from the ArchivesSpace API, collection-level IDs prefer id_0, id_1, etc. to the EAD ID field. The harvester builds collection level IDs this way:
+
+1. Join `id_0`, `id_1`, `id_2`, `id_3` with dots (`.`), using only non-empty parts.
+2. If all identifier parts are empty, fall back to `ead_id`.
+
+The resulting identifier is normalized to match ArcLight's default `NormalizedId` behavior:
+
+- Trim leading/trailing whitespace
+- Replace `.` with `-`
 
 ## Indexing from EAD 2002
 

@@ -131,7 +131,7 @@ class EAD:
                 record_id = self._text_of(eadid_el)
         if not record_id:
             raise ValueError("No identifier found (@id, unitid, or eadid)")
-        record.id = record_id.replace(" ", "_")
+        record.id = record_id.strip().replace(".", "-")
 
         record.collection_id = collection_id or ""
         record.repository = repository or ""
