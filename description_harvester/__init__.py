@@ -35,6 +35,7 @@ def parse_args(args=None):
         metavar="PATH",
         help="Path to an EAD-XML file or a directory containing EAD-XML files."
     )
+    parser.add_argument('--batch', action="store_true", help="skip committing after indexing a collection")
 
     return parser.parse_args(args) if args else parser.parse_args()
 
@@ -158,8 +159,11 @@ def harvest(args=None):
             index_record(args, arclight, source, file, repository_name)
             doc_count += 1
 
-    print (f"Committing {doc_count} collection docs to the Solr index...")
-    solr.commit()
+    if not args.batch:
+        print (f"Committing {doc_count} collection docs to the Solr index...")
+        solr.commit()
+
+    return
 
     end_time = time.time()
     config.last_query = str(int(end_time))
