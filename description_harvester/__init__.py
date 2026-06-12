@@ -35,7 +35,8 @@ def parse_args(args=None):
         metavar="PATH",
         help="Path to an EAD-XML file or a directory containing EAD-XML files."
     )
-    parser.add_argument('--batch', action="store_true", help="skip committing after indexing a collection")
+    parser.add_argument('--batch', action="store_true", help="Skips committing after indexing a collection")
+    parser.add_argument('--commit', action="store_true", help="Commits added documents to Solr. Only needed if --batch was used previously.")
 
     return parser.parse_args(args) if args else parser.parse_args()
 
@@ -79,6 +80,22 @@ def harvest(args=None):
     start_time = time.time()
     print(f"\n------------------------------\nRan at: {datetime.fromtimestamp(start_time)}")
 
+    commit_conflicts = [
+        args.id,
+        args.new,
+        args.all,
+        args.updated,
+        args.uri,
+        args.ead,
+        args.hour,
+        args.today,
+        args.delete,
+    ]
+
+    if args.commit and any(commit_conflicts):
+        print("--commit must be used on its own after one or more --batch runs.")
+        return
+
     required_actions = [
         args.id,
         args.new,
@@ -89,6 +106,7 @@ def harvest(args=None):
         args.hour,
         args.today,
         args.delete,
+        args.commit,
     ]
 
     if not any(required_actions):
@@ -104,6 +122,11 @@ def harvest(args=None):
 
     solr = pysolr.Solr(f"{solr_url}/{solr_core}", always_commit=False, timeout=600)
     solr.ping()
+
+    if args.commit:
+        print (f"Committing all collection docs to the Solr index...")
+        solr.commit()
+        return
 
     # ---- Check input source ----
     source_type = "ead" if args.ead else "aspace"

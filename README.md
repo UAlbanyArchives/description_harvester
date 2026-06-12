@@ -143,6 +143,18 @@ cache_dir: "C:/Users/username/my_cache"
 cache_dir: false
 ```
 
+## Batch indexing and Solr commits
+
+Use `--batch` when you want to add records to Solr without committing after each run. This is useful if you are indexing many collections in separate commands and want to commit once at the end.
+
+```sh
+harvest --id apap101 --batch
+harvest --id apap185 --batch
+harvest --commit
+```
+
+`--commit` is a standalone action. Do not combine it with `--id`, `--ead`, `--new`, `--updated`, or other indexing options.
+
 ## Deleting collections
 
 You can delete one or more collections using the `--delete` argument. This uses the Solr document ID, such as `apap106` for `https://my.ArcLight.edu/catalog/apap106`.
