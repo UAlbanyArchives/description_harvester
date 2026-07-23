@@ -269,7 +269,7 @@ class Arclight():
                 if parent == inherited_data['collection_id']:
                     parent_ids.append(parent)
                 else:
-                    parent_ids.append(inherited_data['collection_id'] + parent)
+                    parent_ids.append(inherited_data['collection_id'] + self.component_id_separator + parent)
             solrDocument.parent_ids_ssim = parent_ids
             # parent_ssi appears to be only the immediate parent
             if len(parents) > 0:
