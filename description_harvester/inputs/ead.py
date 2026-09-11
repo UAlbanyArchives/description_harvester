@@ -164,9 +164,6 @@ class EAD:
                 if updated_dao:
                     dao = updated_dao
         
-        # Parse containers
-        self._parse_containers(elem, did, ns, record)
-        
         # Parse child components recursively
         # Children can be in either <dsc> (top-level) or directly nested within <c> or <c0X> elements
         if elem is not None:
