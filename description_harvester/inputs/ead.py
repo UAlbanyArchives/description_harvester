@@ -5,6 +5,9 @@ from lxml import etree
 from description_harvester.models.description import Component, Date, Extent, Agent, Container, DigitalObject
 from description_harvester.plugins import Plugin, import_plugins
 
+# Normalized dates: YYYY, YYYY-MM, YYYY-MM-DD, optionally followed by a time
+ISO_DATE_RE = re.compile(r"^\d{4}(-\d{2}(-\d{2}(T[\d:.+\-Z]+)?)?)?$")
+
 class EAD:
     def __init__(self, path, verbose=False):
         self.path = Path(path)
@@ -547,12 +550,16 @@ class EAD:
             date_type = ud.get("type")
             begin = None
             end = None
-            if normal and "/" in normal:
-                parts = normal.split("/")
-                if len(parts) >= 1:
+            if normal and normal.strip():
+                parts = [p.strip() for p in normal.split("/")]
+                if (len(parts) <= 2
+                        and parts[0]
+                        and all(not p or ISO_DATE_RE.match(p) for p in parts)):
                     begin = parts[0]
-                if len(parts) >= 2:
-                    end = parts[1]
+                    end = parts[1] if len(parts) == 2 and parts[1] else None
+                else:
+                    print(f"Warning: could not parse unitdate normal attribute {normal!r} "
+                          f"(expression: {expr!r}); ignoring normalized dates")
             d = Date(expression=expr or "", begin=begin, end=end, date_type=date_type)
             dates.append(d)
         return dates

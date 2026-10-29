@@ -5,8 +5,42 @@ import pytest
 
 from description_harvester.inputs.ead import EAD
 from description_harvester.models.description import Component, Date, Extent
+from lxml import etree
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "ead"
+
+EAD_NS = "urn:isbn:1-931666-22-9"
+
+
+def _parse_unitdates(unitdate_xml):
+    did = etree.fromstring(f'<did xmlns="{EAD_NS}">{unitdate_xml}</did>')
+    e = EAD(str(FIXTURES_DIR / "apap185.xml"))
+    return e._parse_dates(did, {"ead": EAD_NS})
+
+@pytest.mark.parametrize("normal,begin,end", [
+    ("1742/1870", "1742", "1870"),
+    ("1742-05/1870-01-02", "1742-05", "1870-01-02"),
+    ("1950/", "1950", None),
+    ("1968-12-15", "1968-12-15", None),
+    ("1988", "1988", None),
+    ("Blah", None, None),
+    ("1932 Fall/1935 Winter", None, None),
+    ("1955-1956", None, None),
+])
+def test_parse_dates_valid_normal(normal, begin, end):
+    dates = _parse_unitdates(f'<unitdate type="inclusive" normal="{normal}">x</unitdate>')
+    assert dates[0].begin == begin
+    assert dates[0].end == end
+
+
+@pytest.mark.parametrize("normal", ["1742/1870, undated", "abc/def"])
+def test_parse_dates_malformed_normal_warns_and_continues(normal, capsys):
+    dates = _parse_unitdates(f'<unitdate type="inclusive" normal="{normal}">1742-1870, undated</unitdate>')
+    assert len(dates) == 1
+    assert dates[0].expression == "1742-1870, undated"
+    assert dates[0].begin is None
+    assert dates[0].end is None
+    assert "Warning" in capsys.readouterr().out
 
 
 def test_items_with_file():
@@ -736,6 +770,8 @@ def test_controlaccess_hierarchical_components():
     
     # This verifies controlaccess parsing works for top-level
     # (Individual child components would need controlaccess in their own XML)
+
+
 
 
 
