@@ -9,6 +9,8 @@ Tested on ASpace up to v3.5.1 but needs some better error handling. Validation i
 
 ## Installation
 
+Supports Python 3.10+. Python 3.9 still works as of 2026 and should still for the time being but won't be tested against.
+
 ```python
 pip install description_harvester
 ```
