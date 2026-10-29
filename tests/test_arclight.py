@@ -126,6 +126,30 @@ class TestComponentIdSeparator:
         # Component ID should be collection_id + "" + component_id (no separator)
         assert result.components[0].id == "coll001comp001"
     
+    @pytest.mark.parametrize("separator", ["_", "-", "", "||"])
+    def test_parent_ids_use_separator(self, separator):
+        """Test that parent_ids_ssim uses the separator for non-collection parents."""
+        arclight = Arclight(Mock(), [], component_id_separator=separator)
+
+        collection = create_minimal_component("coll001", "collection", "Test Collection")
+        collection.dates = [Date(expression="1950-1960")]
+
+        series = create_minimal_component("ser001", "series", "Series 1")
+        series.dates = [Date(expression="1950")]
+        collection.components.append(series)
+
+        file_comp = create_minimal_component("file001", "file", "File 1")
+        file_comp.dates = [Date(expression="1950")]
+        series.components.append(file_comp)
+
+        result = arclight.convert(collection, "Test Repository")
+
+        series_doc = result.components[0]
+        file_doc = series_doc.components[0]
+        # Collection parent is unprefixed; component parents get the separator
+        assert series_doc.parent_ids_ssim == ["coll001"]
+        assert file_doc.parent_ids_ssim == ["coll001", "coll001" + separator + "ser001"]
+
     def test_component_id_with_dots_replaced(self):
         """Test that dots in IDs are replaced with hyphens before joining."""
         mock_solr = Mock()

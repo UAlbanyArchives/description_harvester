@@ -249,7 +249,7 @@ class Arclight():
         else:
             record.component_level_isim = [recursive_level]
 
-            #Arclight expects the collection id to be prepended to component ids but not to ref_ssm
+            # Arclight expects the collection id to be prepended to component ids but not to ref_ssm
             solrDocument.id = record.collection_id.replace(".", "-") + self.component_id_separator + record.id.replace(".", "-")
             solrDocument.ref_ssi = record.id.replace(".", "-")
             # dunno why this is duplicated, but it seems to be like this in the default indexer
@@ -269,7 +269,7 @@ class Arclight():
                 if parent == inherited_data['collection_id']:
                     parent_ids.append(parent)
                 else:
-                    parent_ids.append(inherited_data['collection_id'] + parent)
+                    parent_ids.append(inherited_data['collection_id'] + self.component_id_separator + parent)
             solrDocument.parent_ids_ssim = parent_ids
             # parent_ssi appears to be only the immediate parent
             if len(parents) > 0:
